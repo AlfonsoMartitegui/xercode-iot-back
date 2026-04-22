@@ -15,6 +15,7 @@ router = APIRouter(prefix="/tenants", tags=["tenants"])
 class TenantDomainOut(BaseModel):
     id: int
     domain: str
+    is_primary: bool
 
     class Config:
         orm_mode = True
@@ -52,6 +53,16 @@ class TenantUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class TenantDomainCreate(BaseModel):
+    domain: str
+    is_primary: bool = False
+
+
+class TenantDomainUpdate(BaseModel):
+    domain: str | None = None
+    is_primary: bool | None = None
+
+
 def superadmin_required(current_user=Depends(get_current_user)):
     if not current_user.get("is_superadmin", False):
         raise HTTPException(status_code=403, detail="No autorizado")
@@ -68,8 +79,52 @@ def build_tenant_out(db: Session, tenant: Tenant) -> TenantOut:
         redirect_url=tenant.redirect_url,
         beaver_base_url=tenant.beaver_base_url,
         is_active=tenant.is_active,
-        domains=[TenantDomainOut(id=d.id, domain=d.domain) for d in domains],
+        domains=[
+            TenantDomainOut(id=d.id, domain=d.domain, is_primary=d.is_primary)
+            for d in domains
+        ],
     )
+
+
+def get_tenant_or_404(db: Session, tenant_id: int) -> Tenant:
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+    return tenant
+
+
+def get_tenant_domain_or_404(db: Session, tenant_id: int, domain_id: int) -> TenantDomain:
+    domain = (
+        db.query(TenantDomain)
+        .filter(TenantDomain.id == domain_id, TenantDomain.tenant_id == tenant_id)
+        .first()
+    )
+    if not domain:
+        raise HTTPException(status_code=404, detail="Dominio no encontrado")
+    return domain
+
+
+def normalize_domain(raw_domain: str) -> str:
+    domain = raw_domain.strip().lower()
+    if "://" in domain:
+        domain = domain.split("://", 1)[1]
+    domain = domain.split("/", 1)[0]
+    return domain.rstrip("/")
+
+
+def build_tenant_domain_out(domain: TenantDomain) -> TenantDomainOut:
+    return TenantDomainOut(
+        id=domain.id,
+        domain=domain.domain,
+        is_primary=domain.is_primary,
+    )
+
+
+def ensure_single_primary_domain(db: Session, tenant_id: int, current_domain_id: int | None = None):
+    query = db.query(TenantDomain).filter(TenantDomain.tenant_id == tenant_id)
+    if current_domain_id is not None:
+        query = query.filter(TenantDomain.id != current_domain_id)
+    query.update({"is_primary": False}, synchronize_session=False)
 
 
 @router.get("/", response_model=List[TenantOut])
@@ -112,9 +167,7 @@ def get_tenant(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+    tenant = get_tenant_or_404(db, tenant_id)
     return build_tenant_out(db, tenant)
 
 
@@ -125,9 +178,7 @@ def update_tenant(
     db: Session = Depends(get_db),
     current_user=Depends(superadmin_required),
 ):
-    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+    tenant = get_tenant_or_404(db, tenant_id)
 
     if tenant_in.name is not None and tenant_in.name != tenant.name:
         existing_by_name = db.query(Tenant).filter(
@@ -167,10 +218,100 @@ def delete_tenant(
     db: Session = Depends(get_db),
     current_user=Depends(superadmin_required),
 ):
-    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Tenant no encontrado")
+    tenant = get_tenant_or_404(db, tenant_id)
 
     tenant.is_active = False
     db.commit()
     return {"ok": True, "tenant_id": tenant.id, "is_active": tenant.is_active}
+
+
+@router.get("/{tenant_id}/domains", response_model=List[TenantDomainOut])
+def get_tenant_domains(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    get_tenant_or_404(db, tenant_id)
+    domains = db.query(TenantDomain).filter(TenantDomain.tenant_id == tenant_id).all()
+    return [build_tenant_domain_out(domain) for domain in domains]
+
+
+@router.post("/{tenant_id}/domains", response_model=TenantDomainOut)
+def create_tenant_domain(
+    tenant_id: int,
+    domain_in: TenantDomainCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(superadmin_required),
+):
+    get_tenant_or_404(db, tenant_id)
+    normalized_domain = normalize_domain(domain_in.domain)
+    existing = db.query(TenantDomain).filter(TenantDomain.domain == normalized_domain).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="El dominio ya existe")
+
+    if domain_in.is_primary:
+        ensure_single_primary_domain(db, tenant_id)
+
+    domain = TenantDomain(
+        tenant_id=tenant_id,
+        domain=normalized_domain,
+        is_primary=domain_in.is_primary,
+    )
+    db.add(domain)
+    db.commit()
+    db.refresh(domain)
+    return build_tenant_domain_out(domain)
+
+
+@router.get("/{tenant_id}/domains/{domain_id}", response_model=TenantDomainOut)
+def get_tenant_domain(
+    tenant_id: int,
+    domain_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    domain = get_tenant_domain_or_404(db, tenant_id, domain_id)
+    return build_tenant_domain_out(domain)
+
+
+@router.put("/{tenant_id}/domains/{domain_id}", response_model=TenantDomainOut)
+def update_tenant_domain(
+    tenant_id: int,
+    domain_id: int,
+    domain_in: TenantDomainUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(superadmin_required),
+):
+    domain = get_tenant_domain_or_404(db, tenant_id, domain_id)
+
+    if domain_in.domain is not None:
+        normalized_domain = normalize_domain(domain_in.domain)
+        existing = db.query(TenantDomain).filter(
+            TenantDomain.domain == normalized_domain,
+            TenantDomain.id != domain_id,
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="El dominio ya existe")
+        domain.domain = normalized_domain
+
+    if domain_in.is_primary is not None:
+        if domain_in.is_primary:
+            ensure_single_primary_domain(db, tenant_id, current_domain_id=domain_id)
+        domain.is_primary = domain_in.is_primary
+
+    db.commit()
+    db.refresh(domain)
+    return build_tenant_domain_out(domain)
+
+
+@router.delete("/{tenant_id}/domains/{domain_id}")
+def delete_tenant_domain(
+    tenant_id: int,
+    domain_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(superadmin_required),
+):
+    domain = get_tenant_domain_or_404(db, tenant_id, domain_id)
+    db.delete(domain)
+    db.commit()
+    return {"ok": True, "tenant_id": tenant_id, "domain_id": domain_id}

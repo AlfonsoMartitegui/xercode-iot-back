@@ -143,6 +143,32 @@ Deployment impact:
 - frontend can switch to direct tenant detail/edit screens without backend naming changes;
 - production authorization policy must ensure only intended admins receive superadmin tokens.
 
+### 2026-04-22 - Tenant domain CRUD completed for frontend use
+
+Validated:
+
+- domain management endpoints were added under each tenant:
+  - `GET /tenants/{tenant_id}/domains`
+  - `POST /tenants/{tenant_id}/domains`
+  - `GET /tenants/{tenant_id}/domains/{domain_id}`
+  - `PUT /tenants/{tenant_id}/domains/{domain_id}`
+  - `DELETE /tenants/{tenant_id}/domains/{domain_id}`
+- domain responses now include `is_primary`.
+- domain input is normalized before persistence.
+
+Validation result:
+
+- frontend can now list, create, fetch, update and delete tenant domains;
+- write actions require `superadmin`;
+- read actions remain available to authenticated users;
+- domains are normalized to host-style values without protocol or path;
+- when a domain is marked as primary, the previous primary domain of the same tenant is unset automatically.
+
+Deployment impact:
+
+- frontend can manage tenant-domain mapping directly from the backend;
+- reverse proxy and DNS setup should align with the normalized host values stored in `tenant_domains`.
+
 ## Current Status Summary
 
 Completed:
@@ -155,6 +181,7 @@ Completed:
 - user create/update paths now hash passwords correctly.
 - tenant model now includes redirect-oriented business fields.
 - tenant CRUD is now available for frontend integration.
+- tenant domain CRUD is now available for frontend integration.
 
 Pending from runbook:
 
