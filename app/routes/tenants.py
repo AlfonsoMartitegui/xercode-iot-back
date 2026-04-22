@@ -18,7 +18,10 @@ class TenantDomainOut(BaseModel):
 class TenantOut(BaseModel):
     id: int
     name: str
-    code: str = None
+    code: str
+    address: str | None = None
+    redirect_url: str | None = None
+    beaver_base_url: str | None = None
     is_active: bool
     domains: List[TenantDomainOut] = []
     class Config:
@@ -26,7 +29,10 @@ class TenantOut(BaseModel):
 
 class TenantCreate(BaseModel):
     name: str
-    code: str = None
+    code: str
+    address: str | None = None
+    redirect_url: str | None = None
+    beaver_base_url: str | None = None
     is_active: bool = True
 
 @router.get("/", response_model=List[TenantOut])
@@ -39,6 +45,9 @@ def get_tenants(db: Session = Depends(get_db), current_user = Depends(get_curren
             id=tenant.id,
             name=tenant.name,
             code=tenant.code,
+            address=tenant.address,
+            redirect_url=tenant.redirect_url,
+            beaver_base_url=tenant.beaver_base_url,
             is_active=tenant.is_active,
             domains=[TenantDomainOut(id=d.id, domain=d.domain) for d in domains]
         ))
@@ -47,11 +56,31 @@ def get_tenants(db: Session = Depends(get_db), current_user = Depends(get_curren
 # Endpoint para crear tenant
 @router.post("/", response_model=TenantOut)
 def create_tenant(tenant_in: TenantCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    existing = db.query(Tenant).filter(Tenant.name == tenant_in.name).first()
+    existing = (
+        db.query(Tenant)
+        .filter((Tenant.name == tenant_in.name) | (Tenant.code == tenant_in.code))
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=400, detail="El tenant ya existe")
-    tenant = Tenant(name=tenant_in.name, code=tenant_in.code, is_active=tenant_in.is_active)
+    tenant = Tenant(
+        name=tenant_in.name,
+        code=tenant_in.code,
+        address=tenant_in.address,
+        redirect_url=tenant_in.redirect_url,
+        beaver_base_url=tenant_in.beaver_base_url,
+        is_active=tenant_in.is_active,
+    )
     db.add(tenant)
     db.commit()
     db.refresh(tenant)
-    return tenant
+    return TenantOut(
+        id=tenant.id,
+        name=tenant.name,
+        code=tenant.code,
+        address=tenant.address,
+        redirect_url=tenant.redirect_url,
+        beaver_base_url=tenant.beaver_base_url,
+        is_active=tenant.is_active,
+        domains=[],
+    )

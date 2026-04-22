@@ -54,4 +54,6 @@ def whoami(request: Request, db: Session = Depends(get_db)):
         "tenant_id": tenant.id if tenant else None,
         "tenant_code": tenant.code if tenant else None,
         "tenant_name": tenant.name if tenant else None,
+        "redirect_url": tenant.redirect_url if tenant else None,
+        "beaver_base_url": tenant.beaver_base_url if tenant else None,
     }

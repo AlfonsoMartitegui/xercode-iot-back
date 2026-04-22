@@ -86,6 +86,26 @@ Deployment impact:
 - server deployment should explicitly define `JWT_ALGORITHM` and `ACCESS_TOKEN_EXPIRE_MINUTES`;
 - password resets or seeded users must always use the hashed flow from application code.
 
+### 2026-04-22 - Tenant model expanded for hub behavior
+
+Validated:
+
+- tenant model now includes `address`, `redirect_url`, `beaver_base_url` and `updated_at`;
+- tenant creation endpoint accepts the new business fields;
+- tenant listing now returns the new fields;
+- `GET /whoami` now exposes redirect-oriented tenant data.
+
+Validation result:
+
+- `Tenant.code` is now treated as required at API level;
+- tenant uniqueness checks now cover both `name` and `code`;
+- current API is closer to the real hub use case of redirecting to a tenant-specific Beaver IoT instance.
+
+Deployment impact:
+
+- server database must run the new Alembic revision that adds tenant business fields;
+- frontend integration can start consuming `redirect_url` and `beaver_base_url`.
+
 ## Current Status Summary
 
 Completed:
@@ -96,11 +116,11 @@ Completed:
 - default admin bootstrap available.
 - JWT secret moved to environment configuration;
 - user create/update paths now hash passwords correctly.
+- tenant model now includes redirect-oriented business fields.
 
 Pending from runbook:
 
 - restrict sensitive endpoints to superadmin where needed;
-- extend tenant model with business fields;
 - define deployment checklist for server.
 
 ## Connection Reference
