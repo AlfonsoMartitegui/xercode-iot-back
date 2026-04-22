@@ -65,6 +65,27 @@ Important:
 - this password is only acceptable as an initial local bootstrap value;
 - it must be replaced before any real deployment.
 
+### 2026-04-22 - JWT settings externalized and password hashing fixed
+
+Validated:
+
+- `SECRET_KEY` is now read from `.env` instead of being hardcoded in code.
+- JWT algorithm and token expiration are now configurable from `.env`.
+- user creation now stores `password_hash` using real hashing through `passlib`.
+- user update now re-hashes passwords instead of storing plain text.
+
+Validation result:
+
+- security settings are centralized in `app/core/config.py`;
+- `app/core/security.py` now reads JWT settings from environment-backed config;
+- admin/user management endpoints no longer save plain passwords.
+
+Deployment impact:
+
+- server deployment must define `SECRET_KEY`;
+- server deployment should explicitly define `JWT_ALGORITHM` and `ACCESS_TOKEN_EXPIRE_MINUTES`;
+- password resets or seeded users must always use the hashed flow from application code.
+
 ## Current Status Summary
 
 Completed:
@@ -73,11 +94,11 @@ Completed:
 - initial schema versioned;
 - startup decoupled from schema creation;
 - default admin bootstrap available.
+- JWT secret moved to environment configuration;
+- user create/update paths now hash passwords correctly.
 
 Pending from runbook:
 
-- move `SECRET_KEY` and JWT settings to `.env`;
-- ensure user creation and update always hash passwords;
 - restrict sensitive endpoints to superadmin where needed;
 - extend tenant model with business fields;
 - define deployment checklist for server.
@@ -93,6 +114,9 @@ Reference fields:
 - database: `DB_NAME`
 - user: `DB_USER`
 - password: `DB_PASS`
+- jwt secret: `SECRET_KEY`
+- jwt algorithm: `JWT_ALGORITHM`
+- token expiry minutes: `ACCESS_TOKEN_EXPIRE_MINUTES`
 
 Current local target:
 

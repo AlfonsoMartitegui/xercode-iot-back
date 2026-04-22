@@ -7,7 +7,7 @@ from app.models.user import User
 from app.models.tenant import Tenant
 from app.models.tenant_domain import TenantDomain
 from app.models.user_tenant import UserTenant
-from app.core.security import verify_password, create_access_token
+from app.core.security import verify_password, create_access_token, get_password_hash
 from app.core.deps import get_current_user
 
 from typing import List
@@ -172,7 +172,7 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db), current_user
         is_active=user_in.is_active,
         is_superadmin=user_in.is_superadmin
     )
-    user.password_hash = user_in.password  # Reemplaza por hash real si tienes
+    user.password_hash = get_password_hash(user_in.password)
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -224,7 +224,7 @@ def update_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db)
     if user_in.email is not None:
         user.email = user_in.email
     if user_in.password is not None:
-        user.password_hash = user_in.password  # Reemplaza por hash real si tienes
+        user.password_hash = get_password_hash(user_in.password)
     if user_in.is_active is not None:
         user.is_active = user_in.is_active
     if user_in.is_superadmin is not None:
