@@ -1,14 +1,12 @@
-from fastapi import FastAPI, Depends,Request
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from app.db.session import Base, engine, get_db
+from app.db.session import get_db
 from app.models.tenant import Tenant
-from app.models.user import User
 from app.models.tenant_domain import TenantDomain
-from app.models.user_tenant import UserTenant
 
-from app.routes import auth 
+from app.routes import auth
 from app.routes import tenants
 
 app = FastAPI()
@@ -27,9 +25,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# crear las tablas si no existen(en dev)
-Base.metadata.create_all(bind=engine)
-
 app.include_router(auth.router)
 app.include_router(tenants.router)
 
@@ -41,6 +36,8 @@ def ping():
 def list_tenants(db: Session = Depends(get_db)):
     tenants = db.query(Tenant).all()
     return tenants
+
+
 @app.get("/whoami")
 def whoami(request: Request, db: Session = Depends(get_db)):
     host = request.headers.get("host")
