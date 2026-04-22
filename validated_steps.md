@@ -94,9 +94,22 @@ Validated:
 - tenant creation endpoint accepts the new business fields;
 - tenant listing now returns the new fields;
 - `GET /whoami` now exposes redirect-oriented tenant data.
+- a new Alembic revision was generated and applied:
+  - `alembic/versions/f03b39532183_expand_tenant_fields.py`
 
 Validation result:
 
+- current Alembic revision is `f03b39532183 (head)`;
+- `tenants` table now contains:
+  - `id`
+  - `code`
+  - `name`
+  - `is_active`
+  - `created_at`
+  - `address`
+  - `redirect_url`
+  - `beaver_base_url`
+  - `updated_at`
 - `Tenant.code` is now treated as required at API level;
 - tenant uniqueness checks now cover both `name` and `code`;
 - current API is closer to the real hub use case of redirecting to a tenant-specific Beaver IoT instance.
@@ -105,6 +118,30 @@ Deployment impact:
 
 - server database must run the new Alembic revision that adds tenant business fields;
 - frontend integration can start consuming `redirect_url` and `beaver_base_url`.
+
+### 2026-04-22 - Tenant CRUD completed for frontend use
+
+Validated:
+
+- existing endpoints were preserved:
+  - `GET /tenants/`
+  - `POST /tenants/`
+- new tenant endpoints were added without renaming the existing ones:
+  - `GET /tenants/{tenant_id}`
+  - `PUT /tenants/{tenant_id}`
+  - `DELETE /tenants/{tenant_id}`
+
+Validation result:
+
+- frontend can now list, create, fetch, update and deactivate tenants from the backend;
+- `DELETE /tenants/{tenant_id}` performs a logical delete by setting `is_active = false`;
+- create, update and delete tenant actions now require a superadmin user;
+- read operations remain available to authenticated users.
+
+Deployment impact:
+
+- frontend can switch to direct tenant detail/edit screens without backend naming changes;
+- production authorization policy must ensure only intended admins receive superadmin tokens.
 
 ## Current Status Summary
 
@@ -117,6 +154,7 @@ Completed:
 - JWT secret moved to environment configuration;
 - user create/update paths now hash passwords correctly.
 - tenant model now includes redirect-oriented business fields.
+- tenant CRUD is now available for frontend integration.
 
 Pending from runbook:
 
@@ -179,6 +217,7 @@ Commands already validated in this repository:
 - `.\venv\Scripts\alembic.exe revision --autogenerate -m "initial_schema"`
 - `.\venv\Scripts\alembic.exe upgrade head`
 - `.\venv\Scripts\alembic.exe current`
+- `.\venv\Scripts\alembic.exe revision --autogenerate -m "expand_tenant_fields"`
 
 ## Deployment Notes To Expand Later
 
