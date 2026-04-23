@@ -13,6 +13,12 @@ class Settings:
     DB_PASS: str = os.getenv("DB_PASS", "iotpass")
     SECRET_KEY: str = os.getenv("SECRET_KEY", "super-secret-cambia-esto")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    BEAVER_CREDENTIALS_ENCRYPTION_KEY: str = os.getenv(
+        "BEAVER_CREDENTIALS_ENCRYPTION_KEY",
+        "",
+    )
+    BEAVER_CLIENT_ID: str = os.getenv("BEAVER_CLIENT_ID", "")
+    BEAVER_CLIENT_SECRET: str = os.getenv("BEAVER_CLIENT_SECRET", "")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
         os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(60 * 24))
     )

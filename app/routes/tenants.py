@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.core.encryption import encrypt_secret
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.tenant import Tenant
@@ -28,6 +29,7 @@ class TenantOut(BaseModel):
     address: str | None = None
     redirect_url: str | None = None
     beaver_base_url: str | None = None
+    beaver_admin_username: str | None = None
     is_active: bool
     domains: List[TenantDomainOut] = []
 
@@ -41,6 +43,8 @@ class TenantCreate(BaseModel):
     address: str | None = None
     redirect_url: str | None = None
     beaver_base_url: str | None = None
+    beaver_admin_username: str | None = None
+    beaver_admin_password: str | None = None
     is_active: bool = True
 
 
@@ -50,6 +54,8 @@ class TenantUpdate(BaseModel):
     address: str | None = None
     redirect_url: str | None = None
     beaver_base_url: str | None = None
+    beaver_admin_username: str | None = None
+    beaver_admin_password: str | None = None
     is_active: bool | None = None
 
 
@@ -78,6 +84,7 @@ def build_tenant_out(db: Session, tenant: Tenant) -> TenantOut:
         address=tenant.address,
         redirect_url=tenant.redirect_url,
         beaver_base_url=tenant.beaver_base_url,
+        beaver_admin_username=tenant.beaver_admin_username,
         is_active=tenant.is_active,
         domains=[
             TenantDomainOut(id=d.id, domain=d.domain, is_primary=d.is_primary)
@@ -153,8 +160,16 @@ def create_tenant(
         address=tenant_in.address,
         redirect_url=tenant_in.redirect_url,
         beaver_base_url=tenant_in.beaver_base_url,
+        beaver_admin_username=tenant_in.beaver_admin_username,
         is_active=tenant_in.is_active,
     )
+    if tenant_in.beaver_admin_password:
+        try:
+            tenant.beaver_admin_password_encrypted = encrypt_secret(
+                tenant_in.beaver_admin_password
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=500, detail=str(exc))
     db.add(tenant)
     db.commit()
     db.refresh(tenant)
@@ -204,6 +219,15 @@ def update_tenant(
         tenant.redirect_url = tenant_in.redirect_url
     if tenant_in.beaver_base_url is not None:
         tenant.beaver_base_url = tenant_in.beaver_base_url
+    if tenant_in.beaver_admin_username is not None:
+        tenant.beaver_admin_username = tenant_in.beaver_admin_username
+    if tenant_in.beaver_admin_password:
+        try:
+            tenant.beaver_admin_password_encrypted = encrypt_secret(
+                tenant_in.beaver_admin_password
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=500, detail=str(exc))
     if tenant_in.is_active is not None:
         tenant.is_active = tenant_in.is_active
 

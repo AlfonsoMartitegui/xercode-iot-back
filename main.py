@@ -8,6 +8,7 @@ from app.models.tenant_domain import TenantDomain
 
 from app.routes import auth
 from app.routes import tenants
+from app.routes import user_tenants
 
 app = FastAPI()
 origins = [
@@ -27,6 +28,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(tenants.router)
+app.include_router(user_tenants.router)
 
 @app.get("/ping")
 def ping():

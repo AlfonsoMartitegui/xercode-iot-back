@@ -169,6 +169,52 @@ Deployment impact:
 - frontend can manage tenant-domain mapping directly from the backend;
 - reverse proxy and DNS setup should align with the normalized host values stored in `tenant_domains`.
 
+### 2026-04-23 - Beaver model alignment preparation completed
+
+Validated:
+
+- `User.email` is now mandatory and globally unique.
+- `User` now includes `updated_at`.
+- `Tenant` now includes:
+  - `beaver_admin_username`
+  - `beaver_admin_password_encrypted`
+- `UserTenant` now includes:
+  - `beaver_role_id`
+  - `updated_at`
+- reversible encryption helper based on `Fernet` was added for Beaver technical credentials.
+- environment-backed encryption key support was added through:
+  - `BEAVER_CREDENTIALS_ENCRYPTION_KEY`
+- tenant contracts were extended so:
+  - `beaver_admin_username` is returned in normal responses;
+  - `beaver_admin_password` is accepted as write-only input and stored encrypted;
+  - encrypted Beaver tenant password is never exposed in normal GET responses.
+- explicit user-tenant management endpoints were added:
+  - `GET /users/{user_id}/tenants`
+  - `POST /users/{user_id}/tenants`
+  - `PUT /users/{user_id}/tenants/{tenant_id}`
+  - `DELETE /users/{user_id}/tenants/{tenant_id}`
+- existing user management flow in `auth.py` was kept intact.
+- a new Alembic revision was created and applied:
+  - `alembic/versions/6c90d57d8e3f_beaver_model_alignment.py`
+
+Validation result:
+
+- current Alembic revision is `6c90d57d8e3f (head)`;
+- backend data model is now aligned with the Beaver preparation runbook for:
+  - `User`
+  - `Tenant`
+  - `UserTenant`
+- tenant API is now ready to persist Beaver technical admin credentials safely at rest;
+- frontend can manage explicit tenant memberships without relying only on broad user endpoints;
+- no Beaver sync/provisioning logic was introduced yet.
+
+Deployment impact:
+
+- server deployment must define a stable `BEAVER_CREDENTIALS_ENCRYPTION_KEY`;
+- this key must not be rotated casually because stored tenant Beaver credentials would become unreadable;
+- server deployment must continue running `alembic upgrade head`;
+- frontend integration can start using the explicit user-tenant endpoints and Beaver tenant technical fields.
+
 ## Current Status Summary
 
 Completed:
@@ -182,11 +228,16 @@ Completed:
 - tenant model now includes redirect-oriented business fields.
 - tenant CRUD is now available for frontend integration.
 - tenant domain CRUD is now available for frontend integration.
+- Beaver model-alignment preparation is completed for `User`, `Tenant`, `UserTenant` and tenant-facing API contracts.
+- explicit user-tenant endpoints are now available.
+- Beaver tenant technical credentials can now be stored encrypted at rest.
 
 Pending from runbook:
 
-- restrict sensitive endpoints to superadmin where needed;
-- define deployment checklist for server.
+- Beaver sync/provisioning service layer;
+- retry jobs and sync-tracking model;
+- frontend implementation aligned to the new contracts;
+- define expanded deployment checklist for server.
 
 ## Connection Reference
 
@@ -245,6 +296,8 @@ Commands already validated in this repository:
 - `.\venv\Scripts\alembic.exe upgrade head`
 - `.\venv\Scripts\alembic.exe current`
 - `.\venv\Scripts\alembic.exe revision --autogenerate -m "expand_tenant_fields"`
+- `.\venv\Scripts\python.exe -m compileall app main.py alembic\versions\6c90d57d8e3f_beaver_model_alignment.py`
+- `.\venv\Scripts\alembic.exe upgrade head`
 
 ## Deployment Notes To Expand Later
 
