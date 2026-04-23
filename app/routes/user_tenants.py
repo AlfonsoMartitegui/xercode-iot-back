@@ -183,6 +183,7 @@ def update_user_tenant(
     user = get_user_or_404(db, user_id)
     tenant = get_tenant_or_404(db, tenant_id)
     membership = get_user_tenant_or_404(db, user_id, tenant_id)
+    previous_is_active = membership.is_active
     previous_beaver_role_id = membership.beaver_role_id
 
     if payload.role is not None:
@@ -192,19 +193,30 @@ def update_user_tenant(
     if payload.is_active is not None:
         membership.is_active = payload.is_active
 
-    should_sync_beaver_role = (
+    target_beaver_sync: tuple[str | None, str | None] | None = None
+
+    role_changed = (
         payload.beaver_role_id is not None
         and payload.beaver_role_id != previous_beaver_role_id
-        and bool(user.email)
     )
+    activated = payload.is_active is True and previous_is_active is False
+    deactivated = payload.is_active is False and previous_is_active is True
 
-    if should_sync_beaver_role:
+    if role_changed:
+        if membership.is_active:
+            target_beaver_sync = (previous_beaver_role_id, payload.beaver_role_id)
+    elif deactivated and previous_beaver_role_id:
+        target_beaver_sync = (previous_beaver_role_id, None)
+    elif activated and membership.beaver_role_id:
+        target_beaver_sync = (None, membership.beaver_role_id)
+
+    if target_beaver_sync and user.email:
         client = BeaverClient(tenant)
         try:
             client.sync_user_role(
                 email=user.email,
-                old_role_id=previous_beaver_role_id,
-                new_role_id=payload.beaver_role_id,
+                old_role_id=target_beaver_sync[0],
+                new_role_id=target_beaver_sync[1],
             )
         except BeaverConfigError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
@@ -363,6 +375,24 @@ def delete_user_tenant(
     current_user=Depends(superadmin_required),
 ):
     membership = get_user_tenant_or_404(db, user_id, tenant_id)
+    user = get_user_or_404(db, user_id)
+    tenant = get_tenant_or_404(db, tenant_id)
+
+    if membership.is_active and membership.beaver_role_id and user.email:
+        client = BeaverClient(tenant)
+        try:
+            client.sync_user_role(
+                email=user.email,
+                old_role_id=membership.beaver_role_id,
+                new_role_id=None,
+            )
+        except BeaverConfigError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        except BeaverAuthError as exc:
+            raise HTTPException(status_code=502, detail=str(exc))
+        except BeaverConnectionError as exc:
+            raise HTTPException(status_code=504, detail=str(exc))
+
     db.delete(membership)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
