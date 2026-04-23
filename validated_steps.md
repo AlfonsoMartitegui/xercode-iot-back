@@ -401,6 +401,36 @@ Deployment impact:
 - frontend can expose a manual Beaver update action when needed;
 - robust update after email changes will require a later phase that persists Beaver external user identifiers in HUB.
 
+### 2026-04-23 - Beaver role reassignment sync validated through normal HUB user-tenant update
+
+Validated:
+
+- `PUT /users/{user_id}/tenants/{tenant_id}` now triggers Beaver role synchronization when `beaver_role_id` changes.
+- the HUB backend now attempts to:
+  1. authenticate technically against Beaver;
+  2. find the Beaver user by current HUB `email`;
+  3. remove old Beaver role association if needed;
+  4. associate the new Beaver role id.
+- this flow was validated end-to-end through normal usage from:
+  - HUB frontend
+  - Beaver frontend
+
+Validation result:
+
+- the current frontend flow does not need a separate explicit action for Beaver role reassignment;
+- updating `beaver_role_id` in the usual HUB user-tenant edit flow is now sufficient;
+- observed behavior is correct in both systems after the change.
+
+Operational note:
+
+- if the Beaver user does not exist yet, local HUB update can still succeed before provisioning;
+- if the Beaver user exists and is discoverable by current email, role reassignment is synchronized correctly.
+
+Deployment impact:
+
+- HUB and frontend are now aligned so Beaver role reassignment happens inside the normal `UserTenant` update path;
+- operators no longer need to type a role id and trigger a second manual action for the common role-change case.
+
 ## Current Status Summary
 
 Completed:
@@ -425,6 +455,7 @@ Completed:
 - Beaver role mapping is now confirmed as a required part of the provisioning workflow.
 - HUB Beaver roles endpoint is now available and validated for frontend dropdown integration.
 - manual Beaver user update workaround is now available and documented.
+- Beaver role reassignment is now validated through the normal HUB user-tenant update flow.
 
 Pending from runbook:
 

@@ -24,6 +24,7 @@ class BeaverClient:
     SEARCH_MEMBERS_PATH = "/api/v1/user/members/search"
     UPDATE_MEMBER_PATH_TEMPLATE = "/api/v1/user/members/{user_id}"
     ASSOCIATE_ROLE_PATH_TEMPLATE = "/api/v1/user/roles/{role_id}/associate-user"
+    DISASSOCIATE_ROLE_PATH_TEMPLATE = "/api/v1/user/roles/{role_id}/disassociate-user"
     SEARCH_ROLES_PATH = "/api/v1/user/roles/search"
 
     def __init__(self, tenant: Tenant):
@@ -114,6 +115,51 @@ class BeaverClient:
         return {
             "beaver_user_id": beaver_user_id,
             "updated": True,
+        }
+
+    def sync_user_role(self, *, email: str, old_role_id: str | None, new_role_id: str | None) -> dict:
+        access_token = self._authenticate().get("access_token")
+        existing_user = self.find_user_by_email(email=email, access_token=access_token)
+        if existing_user is None:
+            return {
+                "synced": False,
+                "skipped_reason": "beaver_user_not_found",
+            }
+
+        if old_role_id == new_role_id:
+            return {
+                "synced": True,
+                "skipped_reason": "role_unchanged",
+                "beaver_user_id": str(existing_user["user_id"]),
+            }
+
+        beaver_user_id = str(existing_user["user_id"])
+
+        if old_role_id:
+            self._post_json(
+                self.DISASSOCIATE_ROLE_PATH_TEMPLATE.format(role_id=old_role_id),
+                {
+                    "role_id": old_role_id,
+                    "user_ids": [beaver_user_id],
+                },
+                access_token=access_token,
+            )
+
+        if new_role_id:
+            self._post_json(
+                self.ASSOCIATE_ROLE_PATH_TEMPLATE.format(role_id=new_role_id),
+                {
+                    "role_id": new_role_id,
+                    "user_ids": [beaver_user_id],
+                },
+                access_token=access_token,
+            )
+
+        return {
+            "synced": True,
+            "beaver_user_id": beaver_user_id,
+            "removed_old_role": bool(old_role_id and old_role_id != new_role_id),
+            "associated_new_role": bool(new_role_id),
         }
 
     def find_user_by_email(self, *, email: str, access_token: str) -> dict | None:

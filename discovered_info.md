@@ -366,6 +366,32 @@ Implication:
 - `beaver_role_id` is not optional for the current provisioning flow;
 - role selection must be made easier and safer in frontend, ideally through a HUB endpoint that lists Beaver roles per tenant.
 
+## Confirmed Real Role Reassignment Runtime
+
+The normal HUB update flow for:
+
+- `PUT /users/{user_id}/tenants/{tenant_id}`
+
+now synchronizes Beaver role reassignment when `beaver_role_id` changes.
+
+Observed integration interpretation:
+
+1. HUB updates local `UserTenant.beaver_role_id`;
+2. HUB authenticates technically against Beaver;
+3. HUB searches Beaver user by current HUB email;
+4. HUB removes old Beaver role association when applicable;
+5. HUB associates the new Beaver role id.
+
+This behavior was validated successfully by checking:
+
+- HUB frontend behavior after saving the user-tenant update;
+- Beaver frontend state after the change.
+
+Current limitation remains:
+
+- role reassignment still depends on finding the Beaver user by current HUB email;
+- this is acceptable for the current workaround but will be more robust later if Beaver `user_id` is persisted in HUB.
+
 ## Current Integration Interpretation
 
 With the currently confirmed contract, the minimal Beaver provisioning sequence for HUB is:

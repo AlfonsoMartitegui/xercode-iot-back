@@ -71,6 +71,19 @@ Recommended flow:
 3. if update succeeds, show success confirmation;
 4. if update fails with “not found”, show an explicit warning that current workaround depends on matching email.
 
+Important distinction:
+
+- this document applies to Beaver user identity update (`email` / `nickname`);
+- it does not apply to Beaver role reassignment.
+
+Current role reassignment behavior is different:
+
+- when frontend updates `beaver_role_id` through the normal HUB flow
+  - `PUT /users/{user_id}/tenants/{tenant_id}`
+- the HUB backend already attempts Beaver role synchronization automatically.
+
+So frontend does not need a second explicit Beaver call for the common role-change case.
+
 ## What Frontend Should Tell The User
 
 Suggested message for failure case:

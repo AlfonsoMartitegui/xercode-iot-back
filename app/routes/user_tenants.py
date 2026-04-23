@@ -167,7 +167,10 @@ def update_user_tenant(
     db: Session = Depends(get_db),
     current_user=Depends(superadmin_required),
 ):
+    user = get_user_or_404(db, user_id)
+    tenant = get_tenant_or_404(db, tenant_id)
     membership = get_user_tenant_or_404(db, user_id, tenant_id)
+    previous_beaver_role_id = membership.beaver_role_id
 
     if payload.role is not None:
         membership.role = payload.role
@@ -175,6 +178,27 @@ def update_user_tenant(
         membership.beaver_role_id = payload.beaver_role_id
     if payload.is_active is not None:
         membership.is_active = payload.is_active
+
+    should_sync_beaver_role = (
+        payload.beaver_role_id is not None
+        and payload.beaver_role_id != previous_beaver_role_id
+        and bool(user.email)
+    )
+
+    if should_sync_beaver_role:
+        client = BeaverClient(tenant)
+        try:
+            client.sync_user_role(
+                email=user.email,
+                old_role_id=previous_beaver_role_id,
+                new_role_id=payload.beaver_role_id,
+            )
+        except BeaverConfigError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        except BeaverAuthError as exc:
+            raise HTTPException(status_code=502, detail=str(exc))
+        except BeaverConnectionError as exc:
+            raise HTTPException(status_code=504, detail=str(exc))
 
     db.commit()
     db.refresh(membership)
