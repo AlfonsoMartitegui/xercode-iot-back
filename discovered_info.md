@@ -176,6 +176,7 @@ Confirmed or strongly inferred endpoints from Beaver frontend source:
 - `POST /api/v1/user/roles/:role_id/undistributed-users`
 - `POST /api/v1/user/roles/:role_id/associate-user`
 - `POST /api/v1/user/roles/:role_id/disassociate-user`
+- `POST /api/v1/user/roles/search`
 
 Confirmed request contract for associating users to a role:
 
@@ -186,6 +187,62 @@ Confirmed request contract for associating users to a role:
 }
 ```
 
+Observed valid live role-search request:
+
+```json
+{
+  "page_number": 1,
+  "page_size": 999
+}
+```
+
+Observed valid live role-search response:
+
+```json
+{
+  "data": {
+    "page_size": 999,
+    "page_number": 1,
+    "total": 2,
+    "content": [
+      {
+        "role_id": "2047360102588059650",
+        "name": "user",
+        "created_at": "1776963661491",
+        "user_role_count": 0,
+        "role_integration_count": 0
+      },
+      {
+        "role_id": "1",
+        "name": "super_admin",
+        "created_at": "1732005490000",
+        "user_role_count": 1,
+        "role_integration_count": 0
+      }
+    ]
+  },
+  "status": "Success"
+}
+```
+
+Observed valid live role-members request:
+
+- `POST /api/v1/user/roles/2047360102588059650/members`
+
+Observed response shape:
+
+```json
+{
+  "data": {
+    "page_size": 0,
+    "page_number": 1,
+    "total": 0,
+    "content": []
+  },
+  "status": "Success"
+}
+```
+
 Implication for HUB:
 
 - `UserTenant.beaver_role_id` is the correct place to store the Beaver-side role mapping;
@@ -193,6 +250,7 @@ Implication for HUB:
   1. create user if needed;
   2. recover Beaver `user_id`;
   3. associate that user to the target Beaver role.
+- Beaver roles can be exposed from HUB to frontend as a tenant-scoped dropdown source.
 
 ## Additional Endpoints Discovered In Beaver Frontend Source
 
@@ -216,6 +274,44 @@ These were discovered in the local Beaver frontend code and may be useful later:
 - `POST /api/v1/user/roles/:role_id/undistributed-dashboards`
 - `POST /api/v1/user/members/:user_id/permission`
 - `POST /api/v1/user/register`
+
+## Confirmed Real Provisioning Runtime
+
+The first real provisioning test from HUB to Beaver succeeded with:
+
+- `user_id = 2`
+- `tenant_id = 1`
+- `email = a.martitegui.arana@gmail.com`
+- `nickname = arfonzo`
+- `beaver_user_id = 2047360613466869762`
+- `role_id = 2047360102588059650`
+
+Observed successful HUB response:
+
+```json
+{
+  "ok": true,
+  "tenant_id": 1,
+  "user_id": 2,
+  "email": "a.martitegui.arana@gmail.com",
+  "nickname": "arfonzo",
+  "beaver_user_id": "2047360613466869762",
+  "created_user": true,
+  "found_existing_user": false,
+  "role_associated": true,
+  "role_id": "2047360102588059650"
+}
+```
+
+Observed failure before setting the role mapping:
+
+- HUB returned:
+  - `User-tenant Beaver role is not configured`
+
+Implication:
+
+- `beaver_role_id` is not optional for the current provisioning flow;
+- role selection must be made easier and safer in frontend, ideally through a HUB endpoint that lists Beaver roles per tenant.
 
 ## Current Integration Interpretation
 

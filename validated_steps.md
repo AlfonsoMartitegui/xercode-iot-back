@@ -299,6 +299,42 @@ Deployment impact:
 - future automation will require a deliberate password-handling strategy if provisioning is to happen automatically during normal HUB user flows;
 - repository now contains a dedicated discovery record for Beaver contracts and source-level findings.
 
+### 2026-04-23 - First real Beaver user provisioning validated
+
+Validated:
+
+- a real HUB user was provisioned successfully into Beaver through:
+  - `POST /users/{user_id}/tenants/{tenant_id}/beaver/provision`
+- the validated flow used:
+  - tenant Beaver technical auth
+  - Beaver user lookup by `email`
+  - Beaver user creation when not found
+  - Beaver role association through `UserTenant.beaver_role_id`
+- the provisioning response confirmed:
+  - `created_user = true`
+  - `found_existing_user = false`
+  - `role_associated = true`
+- a real Beaver user id was returned after provisioning.
+
+Validation result:
+
+- the first end-to-end HUB to Beaver user provisioning flow is now validated against the local Beaver Docker deployment;
+- current runtime mapping works as intended:
+  - HUB `User.email` -> Beaver user lookup key
+  - HUB `User.username` -> Beaver `nickname`
+  - `UserTenant.beaver_role_id` -> Beaver target role
+- Beaver provisioning is blocked correctly when `UserTenant.beaver_role_id` is missing.
+
+Operational note:
+
+- a valid Beaver role id must exist in `UserTenant.beaver_role_id` before provisioning;
+- manual provisioning still requires explicit password input because HUB does not store Beaver-usable clear-text user password.
+
+Deployment impact:
+
+- role mapping quality is now a real operational dependency for successful Beaver provisioning;
+- frontend should stop using free-text entry for `beaver_role_id` and move to a Beaver-role dropdown fed by HUB.
+
 ## Current Status Summary
 
 Completed:
@@ -319,6 +355,8 @@ Completed:
 - manual Beaver auth verification endpoint is now available per tenant.
 - manual Beaver user provisioning endpoint is now prepared for explicit superadmin use.
 - Beaver endpoint discovery is now documented in a dedicated historical file.
+- first real Beaver user provisioning has been validated end-to-end.
+- Beaver role mapping is now confirmed as a required part of the provisioning workflow.
 
 Pending from runbook:
 
