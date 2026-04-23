@@ -434,6 +434,37 @@ Frontend integration guide created for this flow:
 
 - `change_password_beaver_workout.md`
 
+## Beaver Access Removal Through Membership State
+
+The HUB now uses the already existing membership routes as Beaver access signals:
+
+- `PUT /users/{user_id}/tenants/{tenant_id}`
+- `DELETE /users/{user_id}/tenants/{tenant_id}`
+
+Observed integration interpretation for membership state:
+
+1. frontend changes `is_active` locally and sends it through the normal membership update;
+2. HUB evaluates the transition against previous membership state;
+3. if membership changes from active to inactive, HUB removes Beaver role association;
+4. if membership changes from inactive to active, HUB restores Beaver role association;
+5. if membership is deleted and still had active Beaver access, HUB removes Beaver role association before deleting the local membership row.
+
+Important implementation note:
+
+- this phase did not require new frontend contracts;
+- Beaver access sync was attached to existing frontend calls that were already in use.
+
+Current safety model:
+
+- if `beaver_role_id` is missing, Beaver role sync is skipped;
+- if Beaver user is not found, the local HUB operation is still allowed to continue;
+- if Beaver returns configuration, authentication, or connectivity errors, the HUB operation is blocked.
+
+Current functional interpretation:
+
+- this phase handles Beaver access through role association and disassociation;
+- it does not delete the Beaver user entity itself.
+
 ## Current Integration Interpretation
 
 With the currently confirmed contract, the minimal Beaver provisioning sequence for HUB is:

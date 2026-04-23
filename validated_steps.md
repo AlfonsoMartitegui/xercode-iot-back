@@ -470,6 +470,39 @@ Deployment impact:
 - frontend now has a clear HUB-mediated path to align Beaver passwords when needed;
 - robust password change after email divergence will require a later phase that persists Beaver external user identifiers in HUB.
 
+### 2026-04-23 - Beaver membership disable/remove access sync implemented
+
+Validated:
+
+- the existing HUB membership update flow now also drives Beaver access changes through:
+  - `PUT /users/{user_id}/tenants/{tenant_id}`
+- the existing HUB membership delete flow now also removes Beaver access before deleting locally through:
+  - `DELETE /users/{user_id}/tenants/{tenant_id}`
+- no frontend contract changes were required for this phase.
+
+Validated Beaver behavior now attached to normal membership flows:
+
+- if `is_active` changes from `true` to `false`, HUB now desassociates the current Beaver role from that user membership;
+- if `is_active` changes from `false` to `true`, HUB now reassociates the current Beaver role for that user membership;
+- if the membership is deleted and it still has active Beaver role access, HUB now removes that Beaver role association before deleting the local `UserTenant` record.
+
+Validation result:
+
+- Beaver access management is now aligned with the existing membership lifecycle already used by frontend;
+- no extra buttons or explicit frontend actions were needed for disable/remove access;
+- the implementation stays minimal by reusing the existing `BeaverClient.sync_user_role(...)` behavior.
+
+Operational note:
+
+- if `beaver_role_id` is missing, no Beaver role synchronization is attempted;
+- if the Beaver user does not exist yet, local HUB membership update or delete can still proceed because Beaver sync is skipped as a tolerable case;
+- configuration, authentication, or connectivity failures against Beaver still block the operation and surface as backend errors.
+
+Deployment impact:
+
+- frontend membership toggle and membership delete actions are now backed by Beaver access synchronization automatically;
+- the current integration remains role-association based and does not delete the Beaver user entity itself.
+
 ## Current Status Summary
 
 Completed:
@@ -496,6 +529,7 @@ Completed:
 - manual Beaver user update workaround is now available and documented.
 - Beaver role reassignment is now validated through the normal HUB user-tenant update flow.
 - manual Beaver password change endpoint is now available and documented.
+- Beaver membership disable/remove access sync is now attached to the normal `UserTenant` update and delete flows.
 
 Pending from runbook:
 
