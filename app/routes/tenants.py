@@ -9,6 +9,12 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.tenant import Tenant
 from app.models.tenant_domain import TenantDomain
+from app.services.beaver_client import (
+    BeaverAuthError,
+    BeaverClient,
+    BeaverConfigError,
+    BeaverConnectionError,
+)
 
 router = APIRouter(prefix="/tenants", tags=["tenants"])
 
@@ -67,6 +73,16 @@ class TenantDomainCreate(BaseModel):
 class TenantDomainUpdate(BaseModel):
     domain: str | None = None
     is_primary: bool | None = None
+
+
+class BeaverAuthTestOut(BaseModel):
+    ok: bool
+    tenant_id: int
+    beaver_base_url: str
+    authenticated_as: str
+    token_type: str | None = None
+    expires_in: int | None = None
+    token_received: bool
 
 
 def superadmin_required(current_user=Depends(get_current_user)):
@@ -247,6 +263,27 @@ def delete_tenant(
     tenant.is_active = False
     db.commit()
     return {"ok": True, "tenant_id": tenant.id, "is_active": tenant.is_active}
+
+
+@router.post("/{tenant_id}/beaver/test-auth", response_model=BeaverAuthTestOut)
+def test_tenant_beaver_auth(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(superadmin_required),
+):
+    tenant = get_tenant_or_404(db, tenant_id)
+    client = BeaverClient(tenant)
+
+    try:
+        result = client.test_auth()
+    except BeaverConfigError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except BeaverAuthError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    except BeaverConnectionError as exc:
+        raise HTTPException(status_code=504, detail=str(exc))
+
+    return BeaverAuthTestOut(**result)
 
 
 @router.get("/{tenant_id}/domains", response_model=List[TenantDomainOut])

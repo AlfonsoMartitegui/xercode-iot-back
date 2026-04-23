@@ -215,6 +215,47 @@ Deployment impact:
 - server deployment must continue running `alembic upgrade head`;
 - frontend integration can start using the explicit user-tenant endpoints and Beaver tenant technical fields.
 
+### 2026-04-23 - Beaver phase 2A technical authentication validated
+
+Validated:
+
+- global Beaver OAuth configuration was added through:
+  - `BEAVER_CLIENT_ID`
+  - `BEAVER_CLIENT_SECRET`
+  - `BEAVER_HTTP_TIMEOUT_SECONDS`
+- a minimal Beaver API client was introduced for technical authentication only.
+- the HUB now performs Beaver login against:
+  - `POST /api/v1/oauth2/token`
+- a superadmin-only manual validation endpoint was added:
+  - `POST /tenants/{tenant_id}/beaver/test-auth`
+- the Beaver login flow now uses:
+  - `Tenant.beaver_base_url`
+  - `Tenant.beaver_admin_username`
+  - decrypted `Tenant.beaver_admin_password_encrypted`
+  - global `BEAVER_CLIENT_ID`
+  - global `BEAVER_CLIENT_SECRET`
+- Beaver technical authentication was tested successfully end-to-end from HUB to local Beaver Docker.
+
+Validation result:
+
+- the tenant Beaver backend base URL was validated as:
+  - `http://localhost:9000`
+- technical auth returns a valid Beaver token payload from the HUB flow;
+- the HUB can now confirm Beaver connectivity and tenant technical credentials without exposing secrets;
+- no Beaver user provisioning was implemented yet;
+- the previously observed error `Invalid Beaver credential or encryption key` was confirmed to happen when the tenant Beaver password is written directly in the database instead of being stored through the backend encryption flow.
+
+Operational note:
+
+- `beaver_admin_password_encrypted` must not be written manually in clear text directly into the database;
+- Beaver tenant password must be saved through the backend create/update tenant flow so it is encrypted with the current application key before runtime use.
+
+Deployment impact:
+
+- each tenant must store a valid Beaver backend API base URL and technical admin credentials before authentication tests can succeed;
+- environment configuration must include stable Beaver OAuth client credentials shared by the managed Beaver deployments;
+- local and server operations can now validate Beaver connectivity before attempting real user provisioning.
+
 ## Current Status Summary
 
 Completed:
@@ -231,9 +272,12 @@ Completed:
 - Beaver model-alignment preparation is completed for `User`, `Tenant`, `UserTenant` and tenant-facing API contracts.
 - explicit user-tenant endpoints are now available.
 - Beaver tenant technical credentials can now be stored encrypted at rest.
+- Beaver technical authentication from HUB to tenant Beaver is now validated.
+- manual Beaver auth verification endpoint is now available per tenant.
 
 Pending from runbook:
 
+- confirm the real Beaver user provisioning endpoint and payload contract;
 - Beaver sync/provisioning service layer;
 - retry jobs and sync-tracking model;
 - frontend implementation aligned to the new contracts;
@@ -298,6 +342,7 @@ Commands already validated in this repository:
 - `.\venv\Scripts\alembic.exe revision --autogenerate -m "expand_tenant_fields"`
 - `.\venv\Scripts\python.exe -m compileall app main.py alembic\versions\6c90d57d8e3f_beaver_model_alignment.py`
 - `.\venv\Scripts\alembic.exe upgrade head`
+- `POST /tenants/{tenant_id}/beaver/test-auth`
 
 ## Deployment Notes To Expand Later
 
