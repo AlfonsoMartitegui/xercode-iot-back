@@ -133,6 +133,78 @@ Reason:
 2. HUB disables or removes access in Beaver.
 3. HUB stores sync status and timestamp.
 
+## Next Operational Integration Order
+
+Based on the current validated state, the next implementation order after initial provisioning should be:
+
+1. update Beaver user data;
+2. change Beaver user password;
+3. disable Beaver user access and/or remove Beaver role association;
+4. only after that, automate Beaver sync triggers from normal HUB flows.
+
+### 1. Update user
+
+Goal:
+
+- when HUB user identity changes, Beaver user data should be updated to match.
+
+Expected Beaver-side focus:
+
+- update `email` if allowed by Beaver;
+- update display value used as `nickname`;
+- keep HUB as the source of truth for identity fields.
+
+### 2. Change password
+
+Goal:
+
+- allow HUB-driven password changes to be reflected in Beaver.
+
+Important note:
+
+- Beaver requires a usable clear-text password value for password update operations;
+- HUB password hashing alone is not enough to reconstruct that value later.
+
+Operational implication:
+
+- password synchronization must happen only at flows where the new password value is explicitly available to the HUB at runtime.
+
+### 3. Disable user access / remove role
+
+Goal:
+
+- when a user loses access in HUB, Beaver access must be restricted accordingly.
+
+This should be treated as two distinct Beaver-side actions that may or may not both be needed:
+
+- disable Beaver user account;
+- remove Beaver role association.
+
+Reason:
+
+- some scenarios mean the user should remain in Beaver but lose a role;
+- other scenarios mean the user should lose operational access entirely.
+
+These actions should not be collapsed conceptually too early.
+
+### 4. Automate sync triggers
+
+Automation should come only after the previous manual or explicit flows are stable.
+
+Important architecture rule:
+
+- frontend may trigger HUB actions;
+- frontend should not orchestrate Beaver logic directly;
+- HUB backend remains the orchestration layer.
+
+Recommended interpretation:
+
+- frontend saves or updates data in HUB;
+- frontend may call an explicit HUB action endpoint;
+- HUB decides whether Beaver provisioning, update, password sync, disable, or role removal must happen.
+
+This keeps Beaver credentials, business rules, and failure handling centralized in the backend.
+
 ## Source of Truth
 
 The HUB must be the source of truth.
