@@ -23,6 +23,7 @@ class BeaverClient:
     CREATE_MEMBER_PATH = "/api/v1/user/members"
     SEARCH_MEMBERS_PATH = "/api/v1/user/members/search"
     UPDATE_MEMBER_PATH_TEMPLATE = "/api/v1/user/members/{user_id}"
+    CHANGE_PASSWORD_PATH_TEMPLATE = "/api/v1/user/members/{user_id}/change-password"
     ASSOCIATE_ROLE_PATH_TEMPLATE = "/api/v1/user/roles/{role_id}/associate-user"
     DISASSOCIATE_ROLE_PATH_TEMPLATE = "/api/v1/user/roles/{role_id}/disassociate-user"
     SEARCH_ROLES_PATH = "/api/v1/user/roles/search"
@@ -115,6 +116,27 @@ class BeaverClient:
         return {
             "beaver_user_id": beaver_user_id,
             "updated": True,
+        }
+
+    def change_user_password(self, *, email: str, password: str) -> dict:
+        access_token = self._authenticate().get("access_token")
+        existing_user = self.find_user_by_email(email=email, access_token=access_token)
+        if existing_user is None:
+            raise BeaverAuthError("Beaver user not found for password change")
+
+        beaver_user_id = str(existing_user["user_id"])
+        self._send_json(
+            path=self.CHANGE_PASSWORD_PATH_TEMPLATE.format(user_id=beaver_user_id),
+            payload={
+                "user_id": beaver_user_id,
+                "password": password,
+            },
+            access_token=access_token,
+            method="PUT",
+        )
+        return {
+            "beaver_user_id": beaver_user_id,
+            "password_changed": True,
         }
 
     def sync_user_role(self, *, email: str, old_role_id: str | None, new_role_id: str | None) -> dict:

@@ -392,6 +392,48 @@ Current limitation remains:
 - role reassignment still depends on finding the Beaver user by current HUB email;
 - this is acceptable for the current workaround but will be more robust later if Beaver `user_id` is persisted in HUB.
 
+## HUB-Mediated Beaver Password Change
+
+The Beaver frontend source already showed the password reset contract:
+
+- `PUT /api/v1/user/members/:user_id/change-password`
+
+Observed request shape from Beaver frontend source:
+
+```json
+{
+  "user_id": "<beaver-user-id>",
+  "password": "<new-password>"
+}
+```
+
+The HUB now exposes a matching tenant-scoped administrative endpoint for frontend use:
+
+- `PUT /users/{user_id}/tenants/{tenant_id}/beaver/change-password`
+
+HUB integration interpretation:
+
+1. frontend sends the new plain password to the HUB endpoint;
+2. HUB authenticates technically against Beaver with tenant technical credentials;
+3. HUB searches Beaver user by current HUB `email`;
+4. HUB calls Beaver change-password using the discovered Beaver `user_id`.
+
+Why a HUB endpoint is necessary:
+
+- Beaver password change requires tenant technical credentials that must remain backend-only;
+- the normal HUB user edit route does not include tenant context and should not guess which Beaver tenant needs the password change;
+- a dedicated tenant-scoped HUB endpoint keeps the behavior explicit and controlled.
+
+Current known limitation:
+
+- this flow still depends on finding the Beaver user by current HUB email;
+- if HUB email has already changed but Beaver still stores the previous email, password change may fail with:
+  - `Beaver user not found for password change`
+
+Frontend integration guide created for this flow:
+
+- `change_password_beaver_workout.md`
+
 ## Current Integration Interpretation
 
 With the currently confirmed contract, the minimal Beaver provisioning sequence for HUB is:

@@ -431,6 +431,45 @@ Deployment impact:
 - HUB and frontend are now aligned so Beaver role reassignment happens inside the normal `UserTenant` update path;
 - operators no longer need to type a role id and trigger a second manual action for the common role-change case.
 
+### 2026-04-23 - Beaver password change endpoint implemented
+
+Validated:
+
+- a manual Beaver password change endpoint was added:
+  - `PUT /users/{user_id}/tenants/{tenant_id}/beaver/change-password`
+- the HUB password-change flow now:
+  1. authenticates technically against Beaver;
+  2. searches Beaver user by current HUB `email`;
+  3. changes Beaver password through:
+     - `PUT /api/v1/user/members/{user_id}/change-password`
+- the HUB endpoint accepts a minimal request body with:
+  - `password`
+- frontend integration guidance was documented in:
+  - `change_password_beaver_workout.md`
+
+Validation result:
+
+- the HUB now exposes a backend-controlled Beaver password change path without exposing Beaver technical credentials to frontend;
+- Beaver password alignment stays explicit and tenant-scoped instead of being hidden inside the generic HUB user update flow;
+- the implementation remains consistent with the current workaround strategy already used for Beaver identity updates.
+
+Operational note:
+
+- frontend should first save local HUB password changes through the normal HUB user flow, then call the Beaver password endpoint only when Beaver password alignment is also required;
+- the plain password is supplied only in the request and is not stored in HUB;
+- this endpoint should be treated as an administrative synchronization action, not as background automatic sync.
+
+Expected limitation:
+
+- this flow still depends on finding the Beaver user by the current HUB `email`;
+- if HUB email has changed but Beaver still stores the previous email, password change may fail with:
+  - `Beaver user not found for password change`
+
+Deployment impact:
+
+- frontend now has a clear HUB-mediated path to align Beaver passwords when needed;
+- robust password change after email divergence will require a later phase that persists Beaver external user identifiers in HUB.
+
 ## Current Status Summary
 
 Completed:
@@ -456,12 +495,12 @@ Completed:
 - HUB Beaver roles endpoint is now available and validated for frontend dropdown integration.
 - manual Beaver user update workaround is now available and documented.
 - Beaver role reassignment is now validated through the normal HUB user-tenant update flow.
+- manual Beaver password change endpoint is now available and documented.
 
 Pending from runbook:
 
 - Beaver sync/provisioning service layer;
 - retry jobs and sync-tracking model;
-- frontend implementation aligned to the new contracts;
 - define expanded deployment checklist for server.
 
 ## Connection Reference
