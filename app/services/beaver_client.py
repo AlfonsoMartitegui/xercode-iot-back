@@ -23,6 +23,7 @@ class BeaverClient:
     CREATE_MEMBER_PATH = "/api/v1/user/members"
     SEARCH_MEMBERS_PATH = "/api/v1/user/members/search"
     ASSOCIATE_ROLE_PATH_TEMPLATE = "/api/v1/user/roles/{role_id}/associate-user"
+    SEARCH_ROLES_PATH = "/api/v1/user/roles/search"
 
     def __init__(self, tenant: Tenant):
         self.tenant = tenant
@@ -76,6 +77,21 @@ class BeaverClient:
             "role_associated": True,
             "role_id": role_id,
         }
+
+    def list_roles(self) -> list[dict]:
+        access_token = self._authenticate().get("access_token")
+        payload = self._post_json(
+            self.SEARCH_ROLES_PATH,
+            {
+                "page_number": 1,
+                "page_size": 999,
+            },
+            access_token=access_token,
+        )
+        roles = payload.get("content") or []
+        if not isinstance(roles, list):
+            raise BeaverAuthError("Beaver role search response did not include a role list")
+        return roles
 
     def find_user_by_email(self, *, email: str, access_token: str) -> dict | None:
         payload = self._post_json(

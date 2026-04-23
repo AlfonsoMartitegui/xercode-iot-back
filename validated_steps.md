@@ -335,6 +335,36 @@ Deployment impact:
 - role mapping quality is now a real operational dependency for successful Beaver provisioning;
 - frontend should stop using free-text entry for `beaver_role_id` and move to a Beaver-role dropdown fed by HUB.
 
+### 2026-04-23 - Beaver roles endpoint exposed from HUB and validated
+
+Validated:
+
+- a tenant-scoped HUB endpoint was added for Beaver role listing:
+  - `GET /tenants/{tenant_id}/beaver/roles`
+- the HUB endpoint authenticates technically against Beaver and calls:
+  - `POST /api/v1/user/roles/search`
+- the HUB returns a simplified frontend-friendly list with:
+  - `role_id`
+  - `name`
+- the endpoint was validated successfully from Swagger.
+
+Validation result:
+
+- the frontend no longer needs to rely on manual free-text typing for `beaver_role_id`;
+- the HUB now provides a clean source of truth for Beaver role selection per tenant;
+- Beaver role lookup is now mediated by the HUB, keeping Beaver technical credentials out of the frontend.
+
+Operational note:
+
+- this endpoint should be used by frontend when rendering or editing user-tenant assignment;
+- the selected dropdown option should store Beaver `role_id` into `beaver_role_id`;
+- the displayed label should be the Beaver role `name`.
+
+Deployment impact:
+
+- frontend can now replace the free-text `beaver_role_id` input with a tenant-aware dropdown;
+- HUB and frontend are now aligned for safer Beaver role mapping during user provisioning.
+
 ## Current Status Summary
 
 Completed:
@@ -357,6 +387,7 @@ Completed:
 - Beaver endpoint discovery is now documented in a dedicated historical file.
 - first real Beaver user provisioning has been validated end-to-end.
 - Beaver role mapping is now confirmed as a required part of the provisioning workflow.
+- HUB Beaver roles endpoint is now available and validated for frontend dropdown integration.
 
 Pending from runbook:
 
@@ -426,6 +457,7 @@ Commands already validated in this repository:
 - `.\venv\Scripts\alembic.exe upgrade head`
 - `POST /tenants/{tenant_id}/beaver/test-auth`
 - `POST /users/{user_id}/tenants/{tenant_id}/beaver/provision`
+- `GET /tenants/{tenant_id}/beaver/roles`
 
 ## Deployment Notes To Expand Later
 

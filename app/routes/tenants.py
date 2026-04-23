@@ -85,6 +85,11 @@ class BeaverAuthTestOut(BaseModel):
     token_received: bool
 
 
+class BeaverRoleOut(BaseModel):
+    role_id: str
+    name: str
+
+
 def superadmin_required(current_user=Depends(get_current_user)):
     if not current_user.get("is_superadmin", False):
         raise HTTPException(status_code=403, detail="No autorizado")
@@ -284,6 +289,34 @@ def test_tenant_beaver_auth(
         raise HTTPException(status_code=504, detail=str(exc))
 
     return BeaverAuthTestOut(**result)
+
+
+@router.get("/{tenant_id}/beaver/roles", response_model=List[BeaverRoleOut])
+def list_tenant_beaver_roles(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(superadmin_required),
+):
+    tenant = get_tenant_or_404(db, tenant_id)
+    client = BeaverClient(tenant)
+
+    try:
+        roles = client.list_roles()
+    except BeaverConfigError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except BeaverAuthError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    except BeaverConnectionError as exc:
+        raise HTTPException(status_code=504, detail=str(exc))
+
+    return [
+        BeaverRoleOut(
+            role_id=str(role.get("role_id")),
+            name=str(role.get("name", "")),
+        )
+        for role in roles
+        if role.get("role_id") and role.get("name")
+    ]
 
 
 @router.get("/{tenant_id}/domains", response_model=List[TenantDomainOut])

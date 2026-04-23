@@ -252,6 +252,35 @@ Implication for HUB:
   3. associate that user to the target Beaver role.
 - Beaver roles can be exposed from HUB to frontend as a tenant-scoped dropdown source.
 
+## Confirmed HUB Mediation For Beaver Roles
+
+The HUB now exposes a frontend-facing endpoint for Beaver roles:
+
+- `GET /tenants/{tenant_id}/beaver/roles`
+
+Current HUB response shape:
+
+```json
+[
+  {
+    "role_id": "2047360102588059650",
+    "name": "user"
+  },
+  {
+    "role_id": "1",
+    "name": "super_admin"
+  }
+]
+```
+
+This endpoint was validated successfully from Swagger.
+
+Practical implication:
+
+- frontend should use this HUB endpoint to populate the Beaver role dropdown;
+- frontend should stop asking users to type Beaver role ids manually;
+- `beaver_role_id` should now be chosen from HUB-provided Beaver role options.
+
 ## Additional Endpoints Discovered In Beaver Frontend Source
 
 These were discovered in the local Beaver frontend code and may be useful later:
