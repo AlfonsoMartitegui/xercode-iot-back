@@ -365,6 +365,42 @@ Deployment impact:
 - frontend can now replace the free-text `beaver_role_id` input with a tenant-aware dropdown;
 - HUB and frontend are now aligned for safer Beaver role mapping during user provisioning.
 
+### 2026-04-23 - Beaver user manual update workaround prepared
+
+Validated:
+
+- a manual Beaver update endpoint was added:
+  - `PUT /users/{user_id}/tenants/{tenant_id}/beaver/update`
+- the HUB update flow now:
+  1. authenticates technically against Beaver;
+  2. searches Beaver user by current HUB `email`;
+  3. updates Beaver user through:
+     - `PUT /api/v1/user/members/{user_id}`
+- the Beaver update payload uses:
+  - `user_id`
+  - `nickname`
+  - `email`
+- frontend guidance for the temporary workaround was documented in:
+  - `update_beaver_user_workaround.md`
+
+Validation result:
+
+- HUB now has a minimal manual path to update Beaver user identity data without adding new persistence yet;
+- current update behavior is intentionally limited and controlled;
+- the workaround is suitable only while Beaver user lookup by current email remains valid.
+
+Operational note:
+
+- expected limitation: if HUB email changes first and Beaver still stores the old email, the current manual update may fail with:
+  - `Beaver user not found for update`
+- this is expected in the current workaround because HUB does not yet persist Beaver `user_id`;
+- this limitation is documented and should be treated as known behavior, not as an unexpected regression.
+
+Deployment impact:
+
+- frontend can expose a manual Beaver update action when needed;
+- robust update after email changes will require a later phase that persists Beaver external user identifiers in HUB.
+
 ## Current Status Summary
 
 Completed:
@@ -388,6 +424,7 @@ Completed:
 - first real Beaver user provisioning has been validated end-to-end.
 - Beaver role mapping is now confirmed as a required part of the provisioning workflow.
 - HUB Beaver roles endpoint is now available and validated for frontend dropdown integration.
+- manual Beaver user update workaround is now available and documented.
 
 Pending from runbook:
 
@@ -458,6 +495,7 @@ Commands already validated in this repository:
 - `POST /tenants/{tenant_id}/beaver/test-auth`
 - `POST /users/{user_id}/tenants/{tenant_id}/beaver/provision`
 - `GET /tenants/{tenant_id}/beaver/roles`
+- `PUT /users/{user_id}/tenants/{tenant_id}/beaver/update`
 
 ## Deployment Notes To Expand Later
 

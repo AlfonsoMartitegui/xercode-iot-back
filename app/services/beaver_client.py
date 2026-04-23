@@ -22,6 +22,7 @@ class BeaverClient:
     TOKEN_PATH = "/api/v1/oauth2/token"
     CREATE_MEMBER_PATH = "/api/v1/user/members"
     SEARCH_MEMBERS_PATH = "/api/v1/user/members/search"
+    UPDATE_MEMBER_PATH_TEMPLATE = "/api/v1/user/members/{user_id}"
     ASSOCIATE_ROLE_PATH_TEMPLATE = "/api/v1/user/roles/{role_id}/associate-user"
     SEARCH_ROLES_PATH = "/api/v1/user/roles/search"
 
@@ -92,6 +93,28 @@ class BeaverClient:
         if not isinstance(roles, list):
             raise BeaverAuthError("Beaver role search response did not include a role list")
         return roles
+
+    def update_user(self, *, email: str, nickname: str) -> dict:
+        access_token = self._authenticate().get("access_token")
+        existing_user = self.find_user_by_email(email=email, access_token=access_token)
+        if existing_user is None:
+            raise BeaverAuthError("Beaver user not found for update")
+
+        beaver_user_id = str(existing_user["user_id"])
+        self._send_json(
+            path=self.UPDATE_MEMBER_PATH_TEMPLATE.format(user_id=beaver_user_id),
+            payload={
+                "user_id": beaver_user_id,
+                "nickname": nickname,
+                "email": email,
+            },
+            access_token=access_token,
+            method="PUT",
+        )
+        return {
+            "beaver_user_id": beaver_user_id,
+            "updated": True,
+        }
 
     def find_user_by_email(self, *, email: str, access_token: str) -> dict | None:
         payload = self._post_json(
@@ -170,6 +193,14 @@ class BeaverClient:
         return token_data
 
     def _post_json(self, path: str, payload: dict, *, access_token: str) -> dict:
+        return self._send_json(
+            path=path,
+            payload=payload,
+            access_token=access_token,
+            method="POST",
+        )
+
+    def _send_json(self, *, path: str, payload: dict, access_token: str, method: str) -> dict:
         req = request.Request(
             f"{self._base_url()}{path}",
             data=json.dumps(payload).encode("utf-8"),
@@ -178,7 +209,7 @@ class BeaverClient:
                 "Authorization": f"Bearer {access_token}",
                 "Accept-Language": "EN",
             },
-            method="POST",
+            method=method,
         )
         return self._read_json_response(req)
 

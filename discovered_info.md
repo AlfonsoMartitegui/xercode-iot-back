@@ -166,6 +166,30 @@ Discovered request contract:
 }
 ```
 
+Current HUB usage:
+
+- the HUB now exposes:
+  - `PUT /users/{user_id}/tenants/{tenant_id}/beaver/update`
+- current HUB workaround:
+  1. authenticate technically against Beaver;
+  2. search Beaver user by current HUB email;
+  3. if found, update Beaver user by `user_id`.
+
+Expected limitation:
+
+- if HUB email changes before Beaver email is updated, the current search-by-current-email approach may fail;
+- in that case HUB may return:
+  - `Beaver user not found for update`
+
+Reason:
+
+- HUB still does not persist Beaver `user_id`;
+- therefore Beaver update is not yet based on a stable external identifier.
+
+Expected future fix:
+
+- persist Beaver `user_id` in HUB and update by that stable identifier instead of relying on current email lookup.
+
 ## Confirmed Role Association Flow
 
 User creation and role association are separate operations.

@@ -60,6 +60,16 @@ class BeaverProvisionOut(BaseModel):
     role_id: str
 
 
+class BeaverUpdateOut(BaseModel):
+    ok: bool
+    tenant_id: int
+    user_id: int
+    email: str
+    nickname: str
+    beaver_user_id: str
+    updated: bool
+
+
 def superadmin_required(current_user=Depends(get_current_user)):
     if not current_user.get("is_superadmin", False):
         raise HTTPException(status_code=403, detail="No autorizado")
@@ -219,6 +229,49 @@ def provision_user_tenant_in_beaver(
         found_existing_user=result["found_existing_user"],
         role_associated=result["role_associated"],
         role_id=str(result["role_id"]),
+    )
+
+
+@router.put(
+    "/{user_id}/tenants/{tenant_id}/beaver/update",
+    response_model=BeaverUpdateOut,
+)
+def update_user_tenant_in_beaver(
+    user_id: int,
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(superadmin_required),
+):
+    user = get_user_or_404(db, user_id)
+    membership = get_user_tenant_or_404(db, user_id, tenant_id)
+    tenant = get_tenant_or_404(db, tenant_id)
+
+    if not user.email:
+        raise HTTPException(status_code=400, detail="User email is required for Beaver update")
+    if not membership.is_active:
+        raise HTTPException(status_code=400, detail="User-tenant assignment is inactive")
+
+    client = BeaverClient(tenant)
+    try:
+        result = client.update_user(
+            email=user.email,
+            nickname=user.username,
+        )
+    except BeaverConfigError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except BeaverAuthError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    except BeaverConnectionError as exc:
+        raise HTTPException(status_code=504, detail=str(exc))
+
+    return BeaverUpdateOut(
+        ok=True,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        email=user.email,
+        nickname=user.username,
+        beaver_user_id=str(result["beaver_user_id"]),
+        updated=result["updated"],
     )
 
 
