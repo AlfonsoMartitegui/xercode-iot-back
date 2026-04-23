@@ -20,6 +20,9 @@ class BeaverConnectionError(Exception):
 
 class BeaverClient:
     TOKEN_PATH = "/api/v1/oauth2/token"
+    CREATE_MEMBER_PATH = "/api/v1/user/members"
+    SEARCH_MEMBERS_PATH = "/api/v1/user/members/search"
+    ASSOCIATE_ROLE_PATH_TEMPLATE = "/api/v1/user/roles/{role_id}/associate-user"
 
     def __init__(self, tenant: Tenant):
         self.tenant = tenant
@@ -35,6 +38,60 @@ class BeaverClient:
             "expires_in": payload.get("expires_in"),
             "token_received": bool(payload.get("access_token")),
         }
+
+    def provision_user(self, *, email: str, nickname: str, password: str, role_id: str) -> dict:
+        access_token = self._authenticate().get("access_token")
+        existing_user = self.find_user_by_email(email=email, access_token=access_token)
+        created_user = False
+
+        if existing_user is None:
+            self._post_json(
+                self.CREATE_MEMBER_PATH,
+                {
+                    "email": email,
+                    "nickname": nickname,
+                    "password": password,
+                },
+                access_token=access_token,
+            )
+            created_user = True
+            existing_user = self.find_user_by_email(email=email, access_token=access_token)
+
+        if existing_user is None:
+            raise BeaverAuthError("Beaver user was not found after provisioning attempt")
+
+        self._post_json(
+            self.ASSOCIATE_ROLE_PATH_TEMPLATE.format(role_id=role_id),
+            {
+                "role_id": role_id,
+                "user_ids": [existing_user["user_id"]],
+            },
+            access_token=access_token,
+        )
+
+        return {
+            "beaver_user_id": existing_user["user_id"],
+            "created_user": created_user,
+            "found_existing_user": not created_user,
+            "role_associated": True,
+            "role_id": role_id,
+        }
+
+    def find_user_by_email(self, *, email: str, access_token: str) -> dict | None:
+        payload = self._post_json(
+            self.SEARCH_MEMBERS_PATH,
+            {
+                "page_size": 50,
+                "page_num": 1,
+                "keyword": email,
+            },
+            access_token=access_token,
+        )
+        users = payload.get("content") or []
+        for user in users:
+            if str(user.get("email", "")).strip().lower() == email.strip().lower():
+                return user
+        return None
 
     def _authenticate(self) -> dict:
         base_url = self._base_url()
@@ -95,6 +152,48 @@ class BeaverClient:
             raise BeaverAuthError("Beaver authentication response did not include access_token")
 
         return token_data
+
+    def _post_json(self, path: str, payload: dict, *, access_token: str) -> dict:
+        req = request.Request(
+            f"{self._base_url()}{path}",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {access_token}",
+                "Accept-Language": "EN",
+            },
+            method="POST",
+        )
+        return self._read_json_response(req)
+
+    def _read_json_response(self, req: request.Request) -> dict:
+        try:
+            with request.urlopen(
+                req,
+                timeout=settings.BEAVER_HTTP_TIMEOUT_SECONDS,
+            ) as response:
+                raw_body = response.read().decode("utf-8")
+        except error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            raise BeaverAuthError(
+                f"Beaver request failed with status {exc.code}: {body}"
+            ) from exc
+        except error.URLError as exc:
+            raise BeaverConnectionError(
+                f"Could not connect to Beaver: {exc.reason}"
+            ) from exc
+
+        try:
+            data = json.loads(raw_body)
+        except json.JSONDecodeError as exc:
+            raise BeaverAuthError("Beaver returned a non-JSON response") from exc
+
+        payload = data.get("data")
+        if payload is None:
+            return {}
+        if isinstance(payload, dict):
+            return payload
+        return {"value": payload}
 
     def _base_url(self) -> str:
         base_url = (self.tenant.beaver_base_url or "").strip().rstrip("/")

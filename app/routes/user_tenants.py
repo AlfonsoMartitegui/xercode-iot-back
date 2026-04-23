@@ -9,6 +9,12 @@ from app.db.session import get_db
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant import UserTenant
+from app.services.beaver_client import (
+    BeaverAuthError,
+    BeaverClient,
+    BeaverConfigError,
+    BeaverConnectionError,
+)
 
 router = APIRouter(prefix="/users", tags=["user-tenants"])
 
@@ -35,6 +41,23 @@ class UserTenantUpdate(BaseModel):
     role: str | None = None
     beaver_role_id: str | None = None
     is_active: bool | None = None
+
+
+class BeaverProvisionRequest(BaseModel):
+    password: str
+
+
+class BeaverProvisionOut(BaseModel):
+    ok: bool
+    tenant_id: int
+    user_id: int
+    email: str
+    nickname: str
+    beaver_user_id: str
+    created_user: bool
+    found_existing_user: bool
+    role_associated: bool
+    role_id: str
 
 
 def superadmin_required(current_user=Depends(get_current_user)):
@@ -146,6 +169,57 @@ def update_user_tenant(
     db.commit()
     db.refresh(membership)
     return build_user_tenant_out(membership)
+
+
+@router.post(
+    "/{user_id}/tenants/{tenant_id}/beaver/provision",
+    response_model=BeaverProvisionOut,
+)
+def provision_user_tenant_in_beaver(
+    user_id: int,
+    tenant_id: int,
+    payload: BeaverProvisionRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(superadmin_required),
+):
+    user = get_user_or_404(db, user_id)
+    membership = get_user_tenant_or_404(db, user_id, tenant_id)
+    tenant = get_tenant_or_404(db, tenant_id)
+
+    if not user.email:
+        raise HTTPException(status_code=400, detail="User email is required for Beaver provisioning")
+    if not membership.is_active:
+        raise HTTPException(status_code=400, detail="User-tenant assignment is inactive")
+    if not membership.beaver_role_id:
+        raise HTTPException(status_code=400, detail="User-tenant Beaver role is not configured")
+
+    client = BeaverClient(tenant)
+    try:
+        result = client.provision_user(
+            email=user.email,
+            nickname=user.username,
+            password=payload.password,
+            role_id=membership.beaver_role_id,
+        )
+    except BeaverConfigError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except BeaverAuthError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    except BeaverConnectionError as exc:
+        raise HTTPException(status_code=504, detail=str(exc))
+
+    return BeaverProvisionOut(
+        ok=True,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        email=user.email,
+        nickname=user.username,
+        beaver_user_id=str(result["beaver_user_id"]),
+        created_user=result["created_user"],
+        found_existing_user=result["found_existing_user"],
+        role_associated=result["role_associated"],
+        role_id=str(result["role_id"]),
+    )
 
 
 @router.delete("/{user_id}/tenants/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)

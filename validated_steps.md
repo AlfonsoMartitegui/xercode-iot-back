@@ -256,6 +256,49 @@ Deployment impact:
 - environment configuration must include stable Beaver OAuth client credentials shared by the managed Beaver deployments;
 - local and server operations can now validate Beaver connectivity before attempting real user provisioning.
 
+### 2026-04-23 - Beaver phase 2B manual provisioning prepared and endpoint discovery documented
+
+Validated:
+
+- a manual Beaver provisioning flow was added for explicit superadmin use only.
+- provisioning is triggered per explicit user-tenant assignment through:
+  - `POST /users/{user_id}/tenants/{tenant_id}/beaver/provision`
+- this manual provisioning endpoint requires a request password at call time and does not persist that password in HUB.
+- Beaver provisioning flow implemented in HUB now follows:
+  1. technical auth against Beaver;
+  2. search Beaver user by `email`;
+  3. create Beaver user if not found;
+  4. search again to resolve Beaver `user_id`;
+  5. associate Beaver user to `UserTenant.beaver_role_id`.
+- Beaver provisioning uses:
+  - HUB `User.email` as canonical external identifier;
+  - HUB `User.username` as Beaver `nickname`;
+  - `UserTenant.beaver_role_id` as Beaver role mapping.
+- technical endpoint discovery and historical notes were documented in:
+  - `discovered_info.md`
+
+Validation result:
+
+- phase 2B backend path is prepared with minimal scope and without changing the core HUB user-creation flow;
+- HUB still does not store Beaver end-user password material;
+- provisioning remains manual because Beaver requires clear-text `password` for `POST /api/v1/user/members` while HUB only stores `password_hash`;
+- endpoint discovery is now preserved in repository history so future work can continue without repeating the same inspection process.
+
+Operational note:
+
+- `POST /api/v1/user/members` requires:
+  - `email`
+  - `nickname`
+  - `password`
+- Beaver role assignment is a separate call and is not part of user creation itself.
+- if `UserTenant.beaver_role_id` is missing, manual Beaver provisioning should not proceed.
+
+Deployment impact:
+
+- operators can now trigger controlled Beaver provisioning without redesigning HUB password storage;
+- future automation will require a deliberate password-handling strategy if provisioning is to happen automatically during normal HUB user flows;
+- repository now contains a dedicated discovery record for Beaver contracts and source-level findings.
+
 ## Current Status Summary
 
 Completed:
@@ -274,10 +317,11 @@ Completed:
 - Beaver tenant technical credentials can now be stored encrypted at rest.
 - Beaver technical authentication from HUB to tenant Beaver is now validated.
 - manual Beaver auth verification endpoint is now available per tenant.
+- manual Beaver user provisioning endpoint is now prepared for explicit superadmin use.
+- Beaver endpoint discovery is now documented in a dedicated historical file.
 
 Pending from runbook:
 
-- confirm the real Beaver user provisioning endpoint and payload contract;
 - Beaver sync/provisioning service layer;
 - retry jobs and sync-tracking model;
 - frontend implementation aligned to the new contracts;
@@ -343,6 +387,7 @@ Commands already validated in this repository:
 - `.\venv\Scripts\python.exe -m compileall app main.py alembic\versions\6c90d57d8e3f_beaver_model_alignment.py`
 - `.\venv\Scripts\alembic.exe upgrade head`
 - `POST /tenants/{tenant_id}/beaver/test-auth`
+- `POST /users/{user_id}/tenants/{tenant_id}/beaver/provision`
 
 ## Deployment Notes To Expand Later
 
