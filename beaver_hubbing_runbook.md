@@ -215,6 +215,76 @@ Operational rule:
 - Beaver should not be used as the master source for user lifecycle;
 - any direct manual user creation in Beaver should be treated as an exception or drift.
 
+## Canonical User Identifier
+
+### Functional decision
+
+The canonical user identifier across HUB and Beaver should be `email`.
+
+Reason:
+
+- HUB login is based on `email`;
+- `email` is the user-facing identity value;
+- keeping the same login identifier in both systems reduces confusion and support cost.
+
+Recommended interpretation:
+
+- `email` is the canonical business identifier;
+- Beaver user updates should keep `email` aligned with HUB;
+- `username` should not be treated as the cross-system login identifier.
+
+### Important distinction
+
+Using `email` as the canonical user identity does not mean the HUB should avoid storing Beaver's own `user_id`.
+
+Recommended interpretation:
+
+- `email` remains the functional identity and login value;
+- Beaver `user_id` is stored only as a technical external reference;
+- Beaver `user_id` does not replace `email` in business rules;
+- Beaver `user_id` is useful for Beaver API calls that require a stable member identifier.
+
+This means both can coexist without conflict:
+
+- `email` for identity consistency;
+- `beaver_user_id` for technical addressing and API resilience.
+
+## Email Update Failure Policy
+
+When a HUB user email changes, Beaver should be updated in the same business flow because HUB is the source of truth.
+
+Recommended rule:
+
+- a HUB email change is not considered fully complete until Beaver email update also succeeds for synchronized accounts.
+
+### Policy for synchronized users
+
+If the user is already provisioned in Beaver and Beaver email update fails for a real integration reason, the HUB should treat that as a synchronization failure, not as a silent success.
+
+Recommended behavior:
+
+- attempt Beaver update in the same operation;
+- if Beaver is reachable but rejects or fails the update, mark sync failure explicitly;
+- decide operationally whether the transaction is blocked immediately or completed with a visible sync error status.
+
+### Minimum acceptable behavior for current phase
+
+Until a full sync-tracking model exists, the project should at least avoid silent drift.
+
+Minimum rule:
+
+- do not treat Beaver update failure as a hidden success;
+- return a clear backend error or a clear synchronization warning/result;
+- document whether the local HUB change was committed or rolled back.
+
+### Preferred long-term behavior
+
+Once sync tracking is implemented, the preferred policy is:
+
+- keep `email` as canonical in HUB;
+- store sync status and last error;
+- allow explicit retry of Beaver synchronization when needed.
+
 ## Recommended Persistence for Sync Tracking
 
 The HUB should store external account linkage for each synchronized Beaver account.
@@ -235,6 +305,12 @@ This can live in a dedicated table such as:
 
 - `user_external_accounts`
 - or `user_beaver_links`
+
+Important interpretation:
+
+- persisting Beaver external identifiers is recommended even if `email` is the canonical login identifier;
+- this persistence is meant for technical interoperability and endpoint compatibility;
+- it should not redefine the functional identity model of the HUB.
 
 ## Role Strategy
 
@@ -391,12 +467,12 @@ These should be confirmed before implementation:
 1. Exact tenant fields for Beaver integration.
 2. Exact Beaver role mapping strategy.
 3. Which user identifier is canonical:
-   - `email`
-   - `username`
-   - or both.
+   - confirmed: `email`
+   - Beaver `user_id` may still be persisted as technical external reference.
 4. Exact behavior when HUB user creation succeeds but Beaver provisioning fails.
-5. Whether Beaver sync should be synchronous, asynchronous, or retry-based.
-6. How to disable user creation in Beaver frontend cleanly.
+5. Exact behavior when HUB email update succeeds locally but Beaver email sync fails.
+6. Whether Beaver sync should be synchronous, asynchronous, or retry-based.
+7. How to disable user creation in Beaver frontend cleanly.
 
 ## Recommended Next Step
 
@@ -405,6 +481,6 @@ Before writing integration code, define a short technical contract for:
 - Beaver tenant integration fields;
 - Beaver role mapping;
 - sync statuses;
-- failure handling policy.
+- failure handling policy, especially for `email` synchronization.
 
 After that, implementation can begin safely in the HUB backend.
