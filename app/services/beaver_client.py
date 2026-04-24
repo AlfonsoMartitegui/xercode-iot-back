@@ -19,14 +19,14 @@ class BeaverConnectionError(Exception):
 
 
 class BeaverClient:
-    TOKEN_PATH = "/api/v1/oauth2/token"
-    CREATE_MEMBER_PATH = "/api/v1/user/members"
-    SEARCH_MEMBERS_PATH = "/api/v1/user/members/search"
-    UPDATE_MEMBER_PATH_TEMPLATE = "/api/v1/user/members/{user_id}"
-    CHANGE_PASSWORD_PATH_TEMPLATE = "/api/v1/user/members/{user_id}/change-password"
-    ASSOCIATE_ROLE_PATH_TEMPLATE = "/api/v1/user/roles/{role_id}/associate-user"
-    DISASSOCIATE_ROLE_PATH_TEMPLATE = "/api/v1/user/roles/{role_id}/disassociate-user"
-    SEARCH_ROLES_PATH = "/api/v1/user/roles/search"
+    TOKEN_PATH = "/oauth2/token"
+    CREATE_MEMBER_PATH = "/user/members"
+    SEARCH_MEMBERS_PATH = "/user/members/search"
+    UPDATE_MEMBER_PATH_TEMPLATE = "/user/members/{user_id}"
+    CHANGE_PASSWORD_PATH_TEMPLATE = "/user/members/{user_id}/change-password"
+    ASSOCIATE_ROLE_PATH_TEMPLATE = "/user/roles/{role_id}/associate-user"
+    DISASSOCIATE_ROLE_PATH_TEMPLATE = "/user/roles/{role_id}/disassociate-user"
+    SEARCH_ROLES_PATH = "/user/roles/search"
 
     def __init__(self, tenant: Tenant):
         self.tenant = tenant
