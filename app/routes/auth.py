@@ -166,6 +166,9 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db), current_user
     existing = db.query(User).filter(User.username == user_in.username).first()
     if existing:
         raise HTTPException(status_code=400, detail="El usuario ya existe")
+    existing_email = db.query(User).filter(User.email == user_in.email).first()
+    if existing_email:
+        raise HTTPException(status_code=400, detail="El email ya existe")
     user = User(
         username=user_in.username,
         email=user_in.email,
@@ -176,7 +179,7 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db), current_user
     db.add(user)
     db.commit()
     db.refresh(user)
-    # Asociar tenants
+    # Compatibilidad legacy: el flujo Beaver debe crear membresias explicitas via POST /users/{user_id}/tenants.
     tenants = []
     for tenant_id in user_in.tenant_ids:
         tenant = db.query(Tenant).get(tenant_id)
