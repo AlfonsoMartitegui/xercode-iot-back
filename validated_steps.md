@@ -503,6 +503,61 @@ Deployment impact:
 - frontend membership toggle and membership delete actions are now backed by Beaver access synchronization automatically;
 - the current integration remains role-association based and does not delete the Beaver user entity itself.
 
+### 2026-04-25 - Frontend-driven HUB user alta with Beaver provisioning validated
+
+Validated:
+
+- the HUB frontend now performs the complete user alta sequence without using the legacy `tenant_ids` shortcut for the real Beaver membership.
+- the validated frontend flow executed these backend calls in order:
+  1. `GET /tenants/`
+  2. `GET /tenants/{tenant_id}/beaver/roles`
+  3. `POST /auth/user`
+  4. `POST /users/{user_id}/tenants`
+  5. `POST /users/{user_id}/tenants/{tenant_id}/beaver/provision`
+  6. `GET /auth/users`
+  7. `GET /users/{user_id}/tenants`
+- `POST /auth/user` was called with `tenant_ids: []`, keeping tenant assignment out of the legacy shortcut.
+- the explicit membership was created through `POST /users/{user_id}/tenants` with:
+  - `tenant_id`
+  - `role`
+  - `beaver_role_id`
+  - `is_active`
+- Beaver provisioning returned success with:
+  - `ok = true`
+  - `created_user = true`
+  - `found_existing_user = false`
+  - `role_associated = true`
+  - a real `beaver_user_id`
+
+Validation evidence:
+
+- a local HAR capture confirmed the full request sequence and successful HTTP statuses:
+  - `POST /auth/user` returned `200 OK`;
+  - `POST /users/{user_id}/tenants` returned `201 Created`;
+  - `POST /users/{user_id}/tenants/{tenant_id}/beaver/provision` returned `200 OK`;
+  - the final user listing returned the new user associated with the expected tenant;
+  - the final membership listing returned the expected `beaver_role_id`.
+
+Validation result:
+
+- the frontend and backend are now aligned on the target alta model:
+  - create HUB user;
+  - create explicit HUB membership;
+  - provision Beaver from that membership;
+  - associate the Beaver role selected from the HUB-provided Beaver role dropdown.
+- no new backend composite endpoint was required for this phase;
+- the current endpoint chain is sufficient to execute a real alta from the UI.
+
+Operational note:
+
+- HAR captures can contain bearer tokens and clear-text request passwords during local validation;
+- HAR files should remain local validation artifacts and should not be committed or shared as permanent documentation.
+
+Deployment impact:
+
+- the frontend can now drive operational Beaver user creation through the HUB backend without exposing Beaver technical credentials;
+- the flow is ready to be followed by the HUB-to-Beaver bridge/handoff work for non-superadmin login redirection.
+
 ## Current Status Summary
 
 Completed:
@@ -530,6 +585,7 @@ Completed:
 - Beaver role reassignment is now validated through the normal HUB user-tenant update flow.
 - manual Beaver password change endpoint is now available and documented.
 - Beaver membership disable/remove access sync is now attached to the normal `UserTenant` update and delete flows.
+- frontend-driven user alta now creates the HUB user, explicit membership, Beaver user, and Beaver role association through the existing backend endpoint chain.
 
 Pending from runbook:
 
@@ -600,6 +656,10 @@ Commands already validated in this repository:
 - `POST /users/{user_id}/tenants/{tenant_id}/beaver/provision`
 - `GET /tenants/{tenant_id}/beaver/roles`
 - `PUT /users/{user_id}/tenants/{tenant_id}/beaver/update`
+- frontend-driven alta sequence:
+  - `POST /auth/user`
+  - `POST /users/{user_id}/tenants`
+  - `POST /users/{user_id}/tenants/{tenant_id}/beaver/provision`
 
 ## Deployment Notes To Expand Later
 
