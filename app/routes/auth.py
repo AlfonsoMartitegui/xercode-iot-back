@@ -9,6 +9,11 @@ from app.models.tenant_domain import TenantDomain
 from app.models.user_tenant import UserTenant
 from app.core.security import verify_password, create_access_token, get_password_hash
 from app.core.deps import get_current_user
+from app.core.hub_bridge import (
+    HubBridgeConfigurationError,
+    build_beaver_exchange_url,
+    create_hub_handoff_token,
+)
 
 from typing import List
 
@@ -17,6 +22,20 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+
+class BeaverHandoffRequest(BaseModel):
+    tenant_id: int | None = None
+
+
+class BeaverHandoffResponse(BaseModel):
+    redirect_url: str
+    beaver_base_url: str
+    exchange_url: str
+    code: str
+    expires_in: int
+    tenant_id: int
+    beaver_tenant_id: str
 
 
 @router.post("/login")
@@ -101,6 +120,111 @@ def login(
 @router.get("/me")
 def me(current_user=Depends(get_current_user)):
     return current_user
+
+
+def _resolve_handoff_tenant_id(
+    requested_tenant_id: int | None,
+    current_user: dict,
+    db: Session,
+) -> int:
+    if requested_tenant_id is not None:
+        return requested_tenant_id
+
+    token_tenant_id = current_user.get("tenant_id")
+    if token_tenant_id:
+        return token_tenant_id
+
+    memberships = (
+        db.query(UserTenant)
+        .filter(
+            UserTenant.user_id == current_user["id"],
+            UserTenant.is_active == True,
+        )
+        .all()
+    )
+    if len(memberships) == 1:
+        return memberships[0].tenant_id
+
+    raise HTTPException(
+        status_code=400,
+        detail="Tenant is required for Beaver handoff",
+    )
+
+
+@router.post("/beaver-handoff", response_model=BeaverHandoffResponse)
+def create_beaver_handoff(
+    body: BeaverHandoffRequest | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if current_user.get("is_superadmin", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Superadmin users do not use Beaver handoff",
+        )
+
+    tenant_id = _resolve_handoff_tenant_id(
+        body.tenant_id if body else None,
+        current_user,
+        db,
+    )
+
+    user = db.query(User).filter(User.id == current_user["id"]).first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Invalid user")
+    if user.is_superadmin:
+        raise HTTPException(
+            status_code=403,
+            detail="Superadmin users do not use Beaver handoff",
+        )
+
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not tenant or not tenant.is_active:
+        raise HTTPException(status_code=404, detail="Tenant not found or inactive")
+
+    membership = (
+        db.query(UserTenant)
+        .filter(
+            UserTenant.user_id == user.id,
+            UserTenant.tenant_id == tenant.id,
+            UserTenant.is_active == True,
+        )
+        .first()
+    )
+    if not membership:
+        raise HTTPException(
+            status_code=403,
+            detail="User not allowed for this tenant",
+        )
+
+    if not tenant.redirect_url:
+        raise HTTPException(
+            status_code=400,
+            detail="Tenant redirect_url is not configured",
+        )
+    if not tenant.beaver_base_url:
+        raise HTTPException(
+            status_code=400,
+            detail="Tenant beaver_base_url is not configured",
+        )
+
+    try:
+        code, expires_in, beaver_tenant_id = create_hub_handoff_token(
+            user=user,
+            tenant=tenant,
+        )
+    except HubBridgeConfigurationError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return BeaverHandoffResponse(
+        redirect_url=tenant.redirect_url,
+        beaver_base_url=tenant.beaver_base_url,
+        exchange_url=build_beaver_exchange_url(tenant.beaver_base_url),
+        code=code,
+        expires_in=expires_in,
+        tenant_id=tenant.id,
+        beaver_tenant_id=beaver_tenant_id,
+    )
 
 # --- NUEVOS ENDPOINTS SOLO SUPERADMIN ---
 class TenantOut(BaseModel):
