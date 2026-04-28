@@ -19,7 +19,7 @@ def main() -> None:
         default_username=config.tenant_mqtt_defaults.username,
         default_password=config.tenant_mqtt_defaults.password,
     )
-    mapper = TopicMapper()
+    mapper = TopicMapper(tenant_output_topic=config.beaver_mqtt.output_topic)
     bridge = MqttBridge(
         central_config=config.central_mqtt,
         tenant_resolver=resolver,

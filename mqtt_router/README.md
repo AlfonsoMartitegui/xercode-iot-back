@@ -6,7 +6,7 @@ The service is intentionally independent from the HUB FastAPI backend. It lives 
 
 ## Architecture
 
-Devices publish telemetry to one central MQTT broker. `mqtt_router` subscribes to that broker, extracts the tenant and device from the topic, resolves the internal MQTT destination for that tenant, maps the topic to the Beaver format, and republishes the same payload to the tenant broker.
+Devices publish telemetry to one central MQTT broker. `mqtt_router` subscribes to that broker, extracts the tenant from the topic, resolves the internal MQTT destination for that tenant, maps the topic to the Beaver format, and republishes the same payload to the tenant broker. The device id remains inside the payload, matching the Beaver IoT telemetry contract.
 
 Internal Beaver MQTT brokers should not be exposed publicly. Only the central MQTT broker should be reachable by devices.
 
@@ -14,8 +14,8 @@ Current tenant resolution is mock based:
 
 | Tenant | Internal MQTT |
 | --- | --- |
-| `tenant_a` | `localhost:18831` |
-| `tenant_b` | `localhost:18832` |
+| `tenant_a` | `localhost:1883` |
+| `tenant_b` | `localhost:1883` |
 
 The resolver is isolated in `mqtt_router/tenant_resolver.py` so it can later be replaced with a MySQL query or HUB API call.
 
@@ -43,11 +43,13 @@ CENTRAL_MQTT_HOST=localhost
 CENTRAL_MQTT_PORT=1883
 CENTRAL_MQTT_USERNAME=
 CENTRAL_MQTT_PASSWORD=
-CENTRAL_MQTT_TOPIC=xercode/+/+/telemetry
+CENTRAL_MQTT_TOPIC=xercode/+/telemetry
 CENTRAL_MQTT_CLIENT_ID=xercode-mqtt-router
 
-TENANT_MQTT_DEFAULT_USERNAME=
+TENANT_MQTT_DEFAULT_USERNAME=mqtt@default
 TENANT_MQTT_DEFAULT_PASSWORD=
+
+BEAVER_MQTT_OUTPUT_TOPIC=beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 
 LOG_LEVEL=INFO
 ```
@@ -57,44 +59,46 @@ LOG_LEVEL=INFO
 Input topic from central broker:
 
 ```text
-xercode/{tenant_slug}/{device_id}/telemetry
+xercode/{tenant_slug}/telemetry
 ```
 
 Example:
 
 ```text
-xercode/tenant_a/device_001/telemetry
+xercode/tenant_a/telemetry
 ```
 
 Output topic to Beaver tenant broker:
 
 ```text
-devices/{device_id}/telemetry
+beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 ```
 
 Example:
 
 ```text
-devices/device_001/telemetry
+beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 ```
 
 The mapping is implemented in `mqtt_router/topic_mapper.py` so it can be changed without touching the bridge logic.
+
+Before publishing to Beaver, the router validates that the payload is valid UTF-8 JSON and normalizes it to compact JSON. Invalid JSON is discarded and logged.
 
 ## Test Publish
 
 With a central broker listening on `localhost:1883`, run:
 
 ```powershell
-mosquitto_pub -h localhost -p 1883 -t "xercode/tenant_a/device_001/telemetry" -m "{\"temperature\":22.5}"
+mosquitto_pub -h localhost -p 1883 -t "xercode/tenant_a/telemetry" -m "{\"device_id\":\"sensor001\",\"device_name\":\"Sensor 1\",\"temperature\":23.5,\"humidity\":55,\"time\":\"2026-04-28T16:20:00\"}"
 ```
 
 Expected logs:
 
 ```text
-Message received from central topic=xercode/tenant_a/device_001/telemetry
-Tenant resolved tenant=tenant_a host=localhost port=18831
-Topic mapped source=xercode/tenant_a/device_001/telemetry target=devices/device_001/telemetry
-Message published to tenant tenant=tenant_a host=localhost port=18831 topic=devices/device_001/telemetry
+Message received from central topic=xercode/tenant_a/telemetry
+Tenant resolved tenant=tenant_a host=localhost port=1883
+Topic mapped source=xercode/tenant_a/telemetry target=beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
+Message published to tenant tenant=tenant_a host=localhost port=1883 topic=beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 ```
 
 ## Notes

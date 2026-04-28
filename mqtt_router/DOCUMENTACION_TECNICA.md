@@ -83,6 +83,7 @@ Contiene las dataclasses de configuracion:
 
 - `CentralMqttConfig`
 - `TenantMqttDefaults`
+- `BeaverMqttConfig`
 - `AppConfig`
 
 Tambien contiene `load_config()`, que carga variables de entorno usando `python-dotenv`.
@@ -111,8 +112,8 @@ Clases principales:
 Actualmente `MockTenantResolver` usa un diccionario interno:
 
 ```text
-tenant_a -> localhost:18831
-tenant_b -> localhost:18832
+tenant_a -> localhost:1883
+tenant_b -> localhost:1883
 ```
 
 `HubTenantResolver` queda preparado como punto de sustitucion futuro para consultar MySQL o una API del HUB.
@@ -124,13 +125,13 @@ Contiene la logica para interpretar topics de entrada y convertirlos en topics d
 Entrada actual:
 
 ```text
-xercode/{tenant_slug}/{device_id}/telemetry
+xercode/{tenant_slug}/telemetry
 ```
 
 Salida actual:
 
 ```text
-devices/{device_id}/telemetry
+beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 ```
 
 `mqtt_router/bridge.py`
@@ -200,7 +201,7 @@ reconnect_delay_set(min_delay=1, max_delay=30)
 Cuando el cliente conecta correctamente, `_on_connect()` se suscribe al topic central configurado:
 
 ```text
-CENTRAL_MQTT_TOPIC=xercode/+/+/telemetry
+CENTRAL_MQTT_TOPIC=xercode/+/telemetry
 ```
 
 ### Paso 4: recepcion de mensaje
@@ -213,8 +214,8 @@ Cuando llega un mensaje, `_on_message()` recibe:
 Ejemplo:
 
 ```text
-topic: xercode/tenant_a/device_001/telemetry
-payload: {"temperature":22.5}
+topic: xercode/tenant_a/telemetry
+payload: {"device_id":"sensor001","device_name":"Sensor 1","temperature":23.5,"humidity":55,"time":"2026-04-28T16:20:00"}
 ```
 
 ### Paso 5: validacion y parseo del topic
@@ -222,7 +223,7 @@ payload: {"temperature":22.5}
 `TopicMapper.parse_incoming()` valida que el topic tenga exactamente este formato:
 
 ```text
-xercode/{tenant_slug}/{device_id}/telemetry
+xercode/{tenant_slug}/telemetry
 ```
 
 Si el topic no es valido:
@@ -257,13 +258,13 @@ Si existe, se obtiene un `TenantMqttTarget` con:
 El bridge transforma el topic de entrada:
 
 ```text
-xercode/tenant_a/device_001/telemetry
+xercode/tenant_a/telemetry
 ```
 
 En topic de salida:
 
 ```text
-devices/device_001/telemetry
+beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 ```
 
 Esta transformacion esta centralizada en:
@@ -302,11 +303,13 @@ CENTRAL_MQTT_HOST=localhost
 CENTRAL_MQTT_PORT=1883
 CENTRAL_MQTT_USERNAME=
 CENTRAL_MQTT_PASSWORD=
-CENTRAL_MQTT_TOPIC=xercode/+/+/telemetry
+CENTRAL_MQTT_TOPIC=xercode/+/telemetry
 CENTRAL_MQTT_CLIENT_ID=xercode-mqtt-router
 
-TENANT_MQTT_DEFAULT_USERNAME=
+TENANT_MQTT_DEFAULT_USERNAME=mqtt@default
 TENANT_MQTT_DEFAULT_PASSWORD=
+
+BEAVER_MQTT_OUTPUT_TOPIC=beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 
 LOG_LEVEL=INFO
 ```
@@ -344,7 +347,7 @@ Topic al que se suscribe el router.
 Valor por defecto:
 
 ```text
-xercode/+/+/telemetry
+xercode/+/telemetry
 ```
 
 ### CENTRAL_MQTT_CLIENT_ID
@@ -356,6 +359,24 @@ Identificador del cliente MQTT usado para conectarse al broker central.
 Credenciales opcionales usadas para publicar en los brokers internos de tenants.
 
 La version actual aplica las mismas credenciales por defecto a todos los tenants mock.
+
+### BEAVER_MQTT_OUTPUT_TOPIC
+
+Topic completo de escritura que Beaver IoT espera para el dispositivo MQTT.
+
+Valor por defecto:
+
+```text
+beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
+```
+
+En la interfaz de Beaver normalmente solo se edita el sufijo, por ejemplo:
+
+```text
+beaver/telemetry
+```
+
+Pero para publicar por MQTT se debe usar el Device Topic completo.
 
 ### LOG_LEVEL
 
@@ -413,22 +434,22 @@ Si todo esta correcto, el servicio intentara conectar al broker central y suscri
 Con un broker central escuchando en `localhost:1883`:
 
 ```powershell
-mosquitto_pub -h localhost -p 1883 -t "xercode/tenant_a/device_001/telemetry" -m "{\"temperature\":22.5}"
+mosquitto_pub -h localhost -p 1883 -t "xercode/tenant_a/telemetry" -m "{\"device_id\":\"sensor001\",\"device_name\":\"Sensor 1\",\"temperature\":23.5,\"humidity\":55,\"time\":\"2026-04-28T16:20:00\"}"
 ```
 
 Resultado esperado en logs:
 
 ```text
-Message received from central topic=xercode/tenant_a/device_001/telemetry
-Tenant resolved tenant=tenant_a host=localhost port=18831
-Topic mapped source=xercode/tenant_a/device_001/telemetry target=devices/device_001/telemetry
-Message published to tenant tenant=tenant_a host=localhost port=18831 topic=devices/device_001/telemetry
+Message received from central topic=xercode/tenant_a/telemetry
+Tenant resolved tenant=tenant_a host=localhost port=1883
+Topic mapped source=xercode/tenant_a/telemetry target=beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
+Message published to tenant tenant=tenant_a host=localhost port=1883 topic=beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 ```
 
-Para comprobar la publicacion en el tenant, puede levantarse un broker MQTT interno mock en el puerto `18831` y suscribirse a:
+Para comprobar la publicacion en el tenant, puede levantarse un broker MQTT interno mock en el puerto `1883` y suscribirse a:
 
 ```text
-devices/+/telemetry
+beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 ```
 
 ## 8. Puntos de modificacion para adaptar
@@ -487,7 +508,7 @@ parse_incoming()
 Actualmente espera:
 
 ```text
-xercode/{tenant_slug}/{device_id}/telemetry
+xercode/{tenant_slug}/telemetry
 ```
 
 Si se necesita otro formato, modificar el parseo aqui.
@@ -495,7 +516,7 @@ Si se necesita otro formato, modificar el parseo aqui.
 Ejemplos de formatos futuros:
 
 ```text
-tenants/{tenant_slug}/devices/{device_id}/telemetry
+tenants/{tenant_slug}/beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 hub/{tenant_slug}/{device_id}/events
 ```
 
@@ -516,7 +537,7 @@ to_tenant_topic()
 Actualmente devuelve:
 
 ```text
-devices/{device_id}/telemetry
+beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 ```
 
 Si Beaver requiere otro formato, modificar solo este metodo.
@@ -670,7 +691,7 @@ Antes de usar en produccion, revisar:
 ### Entrada
 
 ```text
-xercode/{tenant_slug}/{device_id}/telemetry
+xercode/{tenant_slug}/telemetry
 ```
 
 Payload:
@@ -681,10 +702,12 @@ bytes sin modificar
 
 El router no interpreta ni modifica el payload.
 
+Antes de publicar hacia Beaver, el router valida que el payload sea JSON UTF-8 valido. Si es valido, lo normaliza a JSON compacto. Si no es valido, lo descarta y registra un error con una previsualizacion del payload.
+
 ### Salida
 
 ```text
-devices/{device_id}/telemetry
+beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 ```
 
 Payload:
@@ -716,5 +739,5 @@ python -m mqtt_router.main
 Probar:
 
 ```powershell
-mosquitto_pub -h localhost -p 1883 -t "xercode/tenant_a/device_001/telemetry" -m "{\"temperature\":22.5}"
+mosquitto_pub -h localhost -p 1883 -t "xercode/tenant_a/telemetry" -m "{\"device_id\":\"sensor001\",\"device_name\":\"Sensor 1\",\"temperature\":23.5,\"humidity\":55,\"time\":\"2026-04-28T16:20:00\"}"
 ```

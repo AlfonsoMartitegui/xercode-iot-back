@@ -26,8 +26,8 @@ class MockTenantResolver(TenantResolver):
         self._default_username = default_username
         self._default_password = default_password
         self._tenants: dict[str, tuple[str, int]] = {
-            "tenant_a": ("localhost", 18831),
-            "tenant_b": ("localhost", 18832),
+            "tenant_a": ("localhost", 1883),
+            "tenant_b": ("localhost", 1883),
         }
 
     def resolve(self, tenant_slug: str) -> TenantMqttTarget | None:

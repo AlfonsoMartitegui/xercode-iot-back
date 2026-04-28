@@ -23,9 +23,15 @@ class TenantMqttDefaults:
 
 
 @dataclass(frozen=True)
+class BeaverMqttConfig:
+    output_topic: str
+
+
+@dataclass(frozen=True)
 class AppConfig:
     central_mqtt: CentralMqttConfig
     tenant_mqtt_defaults: TenantMqttDefaults
+    beaver_mqtt: BeaverMqttConfig
     log_level: str
 
 
@@ -54,14 +60,21 @@ def load_config() -> AppConfig:
             port=_int_env("CENTRAL_MQTT_PORT", 1883),
             username=_optional_env("CENTRAL_MQTT_USERNAME"),
             password=_optional_env("CENTRAL_MQTT_PASSWORD"),
-            topic=os.getenv("CENTRAL_MQTT_TOPIC", "xercode/+/+/telemetry").strip()
-            or "xercode/+/+/telemetry",
+            topic=os.getenv("CENTRAL_MQTT_TOPIC", "xercode/+/telemetry").strip()
+            or "xercode/+/telemetry",
             client_id=os.getenv("CENTRAL_MQTT_CLIENT_ID", "xercode-mqtt-router").strip()
             or "xercode-mqtt-router",
         ),
         tenant_mqtt_defaults=TenantMqttDefaults(
             username=_optional_env("TENANT_MQTT_DEFAULT_USERNAME"),
             password=_optional_env("TENANT_MQTT_DEFAULT_PASSWORD"),
+        ),
+        beaver_mqtt=BeaverMqttConfig(
+            output_topic=os.getenv(
+                "BEAVER_MQTT_OUTPUT_TOPIC",
+                "beaver-iot/mqtt@default/mqtt-device/beaver/telemetry",
+            ).strip()
+            or "beaver-iot/mqtt@default/mqtt-device/beaver/telemetry",
         ),
         log_level=os.getenv("LOG_LEVEL", "INFO").strip().upper() or "INFO",
     )

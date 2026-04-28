@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import time
 
@@ -10,6 +11,13 @@ from mqtt_router.tenant_resolver import TenantMqttTarget, TenantResolver
 from mqtt_router.topic_mapper import TopicMapper
 
 logger = logging.getLogger(__name__)
+
+
+def _payload_preview(payload: bytes, limit: int = 300) -> str:
+    preview = payload[:limit].decode("utf-8", errors="replace")
+    if len(payload) > limit:
+        return f"{preview}..."
+    return preview
 
 
 class MqttBridge:
@@ -125,8 +133,18 @@ class MqttBridge:
             tenant_topic,
         )
 
+        tenant_payload = self._prepare_beaver_payload(message.payload)
+        if tenant_payload is None:
+            logger.error(
+                "Invalid JSON payload discarded tenant=%s topic=%s payload_preview=%s",
+                target.tenant_slug,
+                topic,
+                _payload_preview(message.payload),
+            )
+            return
+
         try:
-            self._publish_to_tenant(target, tenant_topic, message.payload)
+            self._publish_to_tenant(target, tenant_topic, tenant_payload)
         except Exception:
             logger.exception(
                 "Failed to publish to tenant tenant=%s host=%s port=%s topic=%s",
@@ -136,24 +154,84 @@ class MqttBridge:
                 tenant_topic,
             )
 
+    def _prepare_beaver_payload(self, payload: bytes) -> bytes | None:
+        try:
+            decoded_payload = payload.decode("utf-8")
+            parsed_payload = json.loads(decoded_payload)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return None
+
+        return json.dumps(parsed_payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
     def _publish_to_tenant(
         self,
         target: TenantMqttTarget,
         topic: str,
         payload: bytes,
     ) -> None:
+        connected = False
+
+        def on_connect(
+            client: mqtt.Client,
+            userdata: object,
+            flags: mqtt.ConnectFlags,
+            reason_code: mqtt.ReasonCode,
+            properties: mqtt.Properties | None,
+        ) -> None:
+            nonlocal connected
+            connected = not reason_code.is_failure
+            logger.info(
+                "Tenant MQTT connect result tenant=%s reason=%s",
+                target.tenant_slug,
+                reason_code,
+            )
+
+        def on_disconnect(
+            client: mqtt.Client,
+            userdata: object,
+            disconnect_flags: mqtt.DisconnectFlags,
+            reason_code: mqtt.ReasonCode,
+            properties: mqtt.Properties | None,
+        ) -> None:
+            logger.warning(
+                "Tenant MQTT disconnected tenant=%s reason=%s",
+                target.tenant_slug,
+                reason_code,
+            )
+
         # TODO: Use a persistent per-tenant connection pool/cache in production.
         tenant_client = mqtt.Client(
             callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
-            client_id=f"xercode-mqtt-router-{target.tenant_slug}-{int(time.time() * 1000)}",
+            client_id=f"xercode-router-{target.tenant_slug}",
         )
+        tenant_client.on_connect = on_connect
+        tenant_client.on_disconnect = on_disconnect
 
         if target.username:
             tenant_client.username_pw_set(target.username, target.password)
 
         try:
+            logger.info(
+                "Connecting tenant MQTT tenant=%s host=%s port=%s username=%s topic=%s payload=%s",
+                target.tenant_slug,
+                target.host,
+                target.port,
+                target.username,
+                topic,
+                payload.decode("utf-8", errors="replace"),
+            )
+
             tenant_client.connect(target.host, target.port, keepalive=30)
             tenant_client.loop_start()
+
+            for _ in range(50):
+                if connected:
+                    break
+                time.sleep(0.1)
+
+            if not connected:
+                raise RuntimeError("Tenant MQTT did not connect successfully")
+
             result = tenant_client.publish(topic, payload=payload, qos=0)
             result.wait_for_publish(timeout=5)
 
