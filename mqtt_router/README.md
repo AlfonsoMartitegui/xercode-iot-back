@@ -51,6 +51,16 @@ TENANT_MQTT_DEFAULT_PASSWORD=
 
 BEAVER_MQTT_OUTPUT_TOPIC=beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 
+TENANT_RESOLVER=mock
+TENANT_CACHE_TTL_SECONDS=60
+TENANT_MQTT_PORT=1883
+
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=
+MYSQL_USER=
+MYSQL_PASSWORD=
+
 LOG_LEVEL=INFO
 ```
 
@@ -83,6 +93,24 @@ beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 The mapping is implemented in `mqtt_router/topic_mapper.py` so it can be changed without touching the bridge logic.
 
 Before publishing to Beaver, the router validates that the payload is valid UTF-8 JSON and normalizes it to compact JSON. Invalid JSON is discarded and logged.
+
+## Tenant Resolver
+
+By default the router can use the mock resolver. For the real HUB database, set:
+
+```env
+TENANT_RESOLVER=mysql
+TENANT_CACHE_TTL_SECONDS=60
+TENANT_MQTT_PORT=1883
+```
+
+The MySQL resolver reads `tenants.beaver_base_url` by `tenants.code` and `is_active = 1`. It removes `http://`, `https://`, and any HTTP port, then uses the resulting host with MQTT port `1883`.
+
+Example:
+
+```text
+xercode/1234/telemetry -> tenants.code=1234 -> beaver_base_url=http://localhost -> localhost:1883
+```
 
 ## Test Publish
 

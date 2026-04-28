@@ -28,10 +28,23 @@ class BeaverMqttConfig:
 
 
 @dataclass(frozen=True)
+class MySqlTenantConfig:
+    host: str
+    port: int
+    database: str | None
+    user: str | None
+    password: str | None
+    cache_ttl_seconds: int
+    mqtt_port: int
+
+
+@dataclass(frozen=True)
 class AppConfig:
     central_mqtt: CentralMqttConfig
     tenant_mqtt_defaults: TenantMqttDefaults
     beaver_mqtt: BeaverMqttConfig
+    tenant_resolver: str
+    mysql_tenant: MySqlTenantConfig
     log_level: str
 
 
@@ -75,6 +88,16 @@ def load_config() -> AppConfig:
                 "beaver-iot/mqtt@default/mqtt-device/beaver/telemetry",
             ).strip()
             or "beaver-iot/mqtt@default/mqtt-device/beaver/telemetry",
+        ),
+        tenant_resolver=os.getenv("TENANT_RESOLVER", "mock").strip().lower() or "mock",
+        mysql_tenant=MySqlTenantConfig(
+            host=os.getenv("MYSQL_HOST", os.getenv("DB_HOST", "localhost")).strip() or "localhost",
+            port=_int_env("MYSQL_PORT", _int_env("DB_PORT", 3306)),
+            database=_optional_env("MYSQL_DATABASE") or _optional_env("DB_NAME"),
+            user=_optional_env("MYSQL_USER") or _optional_env("DB_USER"),
+            password=_optional_env("MYSQL_PASSWORD") or _optional_env("DB_PASS"),
+            cache_ttl_seconds=_int_env("TENANT_CACHE_TTL_SECONDS", 60),
+            mqtt_port=_int_env("TENANT_MQTT_PORT", 1883),
         ),
         log_level=os.getenv("LOG_LEVEL", "INFO").strip().upper() or "INFO",
     )

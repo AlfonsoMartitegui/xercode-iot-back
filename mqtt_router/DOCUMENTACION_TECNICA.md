@@ -84,6 +84,7 @@ Contiene las dataclasses de configuracion:
 - `CentralMqttConfig`
 - `TenantMqttDefaults`
 - `BeaverMqttConfig`
+- `MySqlTenantConfig`
 - `AppConfig`
 
 Tambien contiene `load_config()`, que carga variables de entorno usando `python-dotenv`.
@@ -116,7 +117,9 @@ tenant_a -> localhost:1883
 tenant_b -> localhost:1883
 ```
 
-`HubTenantResolver` queda preparado como punto de sustitucion futuro para consultar MySQL o una API del HUB.
+`MySqlTenantResolver` consulta la tabla `tenants` del HUB usando `tenants.code` y `is_active = 1`. Toma `beaver_base_url`, extrae el host y usa puerto MQTT `1883`.
+
+`HubTenantResolver` queda preparado como punto de sustitucion futuro para consultar una API del HUB.
 
 `mqtt_router/topic_mapper.py`
 
@@ -311,6 +314,16 @@ TENANT_MQTT_DEFAULT_PASSWORD=
 
 BEAVER_MQTT_OUTPUT_TOPIC=beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 
+TENANT_RESOLVER=mock
+TENANT_CACHE_TTL_SECONDS=60
+TENANT_MQTT_PORT=1883
+
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=
+MYSQL_USER=
+MYSQL_PASSWORD=
+
 LOG_LEVEL=INFO
 ```
 
@@ -377,6 +390,79 @@ beaver/telemetry
 ```
 
 Pero para publicar por MQTT se debe usar el Device Topic completo.
+
+### TENANT_RESOLVER
+
+Selecciona como se resuelven tenants.
+
+Valores:
+
+```text
+mock
+mysql
+```
+
+Para usar la tabla `tenants` del HUB:
+
+```env
+TENANT_RESOLVER=mysql
+```
+
+### TENANT_CACHE_TTL_SECONDS
+
+Tiempo de cache de resoluciones tenant -> MQTT interno.
+
+Valor actual recomendado:
+
+```text
+60
+```
+
+### TENANT_MQTT_PORT
+
+Puerto MQTT interno de Beaver. En esta version se asume siempre:
+
+```text
+1883
+```
+
+### MYSQL_HOST, MYSQL_PORT, MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD
+
+Conexion MySQL usada por `MySqlTenantResolver`.
+
+Consulta ejecutada:
+
+```sql
+SELECT code, beaver_base_url
+FROM tenants
+WHERE code = %s
+  AND is_active = 1
+LIMIT 1;
+```
+
+Ejemplo:
+
+```text
+xercode/1234/telemetry
+```
+
+Busca:
+
+```text
+tenants.code = 1234
+```
+
+Si `beaver_base_url` es:
+
+```text
+http://localhost:9000
+```
+
+El destino MQTT resultante es:
+
+```text
+localhost:1883
+```
 
 ### LOG_LEVEL
 
