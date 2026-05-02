@@ -78,27 +78,44 @@ def login(
         final_tenant_id = tenant_id_from_domain if tenant_id_from_domain else 0
         final_role = "superadmin"
     else:
-        # usuario normal: aqui SI es obligatorio que haya tenant
-        if not tenant_id_from_domain:
-            raise HTTPException(status_code=400, detail="Domain not registered")
-
-        ut = (
-            db.query(UserTenant)
-            .filter(
-                UserTenant.user_id == user.id,
-                UserTenant.tenant_id == tenant_id_from_domain,
-                UserTenant.is_active == True,
+        if tenant_id_from_domain:
+            ut = (
+                db.query(UserTenant)
+                .filter(
+                    UserTenant.user_id == user.id,
+                    UserTenant.tenant_id == tenant_id_from_domain,
+                    UserTenant.is_active == True,
+                )
+                .first()
             )
-            .first()
-        )
-        if not ut:
-            raise HTTPException(
-                status_code=403,
-                detail="User not allowed for this tenant",
-            )
+            if not ut:
+                raise HTTPException(
+                    status_code=403,
+                    detail="User not allowed for this tenant",
+                )
 
-        final_tenant_id = tenant_id_from_domain
-        final_role = ut.role
+            final_tenant_id = tenant_id_from_domain
+            final_role = ut.role
+        else:
+            memberships = (
+                db.query(UserTenant)
+                .filter(
+                    UserTenant.user_id == user.id,
+                    UserTenant.is_active == True,
+                )
+                .all()
+            )
+            if not memberships:
+                raise HTTPException(
+                    status_code=403,
+                    detail="User has no active tenant memberships",
+                )
+            if len(memberships) == 1:
+                final_tenant_id = memberships[0].tenant_id
+                final_role = memberships[0].role
+            else:
+                final_tenant_id = 0
+                final_role = "user"
 
     # 5) crear token
     token = create_access_token(
