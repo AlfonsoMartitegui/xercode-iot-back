@@ -35,6 +35,8 @@ class TenantOut(BaseModel):
     address: str | None = None
     redirect_url: str | None = None
     beaver_base_url: str | None = None
+    beaver_mqtt_host: str | None = None
+    beaver_mqtt_port: str | None = None
     beaver_admin_username: str | None = None
     is_active: bool
     domains: List[TenantDomainOut] = []
@@ -49,6 +51,8 @@ class TenantCreate(BaseModel):
     address: str | None = None
     redirect_url: str | None = None
     beaver_base_url: str | None = None
+    beaver_mqtt_host: str | None = None
+    beaver_mqtt_port: str | None = None
     beaver_admin_username: str | None = None
     beaver_admin_password: str | None = None
     is_active: bool = True
@@ -60,6 +64,8 @@ class TenantUpdate(BaseModel):
     address: str | None = None
     redirect_url: str | None = None
     beaver_base_url: str | None = None
+    beaver_mqtt_host: str | None = None
+    beaver_mqtt_port: str | None = None
     beaver_admin_username: str | None = None
     beaver_admin_password: str | None = None
     is_active: bool | None = None
@@ -105,6 +111,8 @@ def build_tenant_out(db: Session, tenant: Tenant) -> TenantOut:
         address=tenant.address,
         redirect_url=tenant.redirect_url,
         beaver_base_url=tenant.beaver_base_url,
+        beaver_mqtt_host=tenant.beaver_mqtt_host,
+        beaver_mqtt_port=tenant.beaver_mqtt_port,
         beaver_admin_username=tenant.beaver_admin_username,
         is_active=tenant.is_active,
         domains=[
@@ -181,6 +189,8 @@ def create_tenant(
         address=tenant_in.address,
         redirect_url=tenant_in.redirect_url,
         beaver_base_url=tenant_in.beaver_base_url,
+        beaver_mqtt_host=tenant_in.beaver_mqtt_host,
+        beaver_mqtt_port=tenant_in.beaver_mqtt_port,
         beaver_admin_username=tenant_in.beaver_admin_username,
         is_active=tenant_in.is_active,
     )
@@ -240,6 +250,10 @@ def update_tenant(
         tenant.redirect_url = tenant_in.redirect_url
     if tenant_in.beaver_base_url is not None:
         tenant.beaver_base_url = tenant_in.beaver_base_url
+    if tenant_in.beaver_mqtt_host is not None:
+        tenant.beaver_mqtt_host = tenant_in.beaver_mqtt_host
+    if tenant_in.beaver_mqtt_port is not None:
+        tenant.beaver_mqtt_port = tenant_in.beaver_mqtt_port
     if tenant_in.beaver_admin_username is not None:
         tenant.beaver_admin_username = tenant_in.beaver_admin_username
     if tenant_in.beaver_admin_password:

@@ -11,6 +11,8 @@ class Tenant(Base):
     address = Column(String(255), nullable=True)
     redirect_url = Column(String(255), nullable=True)
     beaver_base_url = Column(String(255), nullable=True)
+    beaver_mqtt_host = Column(String(200), nullable=True)
+    beaver_mqtt_port = Column(String(45), nullable=True)
     beaver_admin_username = Column(String(150), nullable=True)
     beaver_admin_password_encrypted = Column(String(512), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
