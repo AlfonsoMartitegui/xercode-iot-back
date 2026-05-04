@@ -105,7 +105,7 @@ class MySqlTenantResolver(TenantResolver):
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT code, beaver_base_url
+                    SELECT code, beaver_base_url, beaver_mqtt_host, beaver_mqtt_port
                     FROM tenants
                     WHERE code = %s
                       AND is_active = 1
@@ -121,7 +121,7 @@ class MySqlTenantResolver(TenantResolver):
             logger.warning("Tenant not found or inactive tenant=%s", tenant_slug)
             return None
 
-        host = _host_from_beaver_base_url(row["beaver_base_url"])
+        host = row.get("beaver_mqtt_host") or _host_from_beaver_base_url(row["beaver_base_url"])
         if host is None:
             logger.error(
                 "Tenant has invalid beaver_base_url tenant=%s beaver_base_url=%s",
@@ -133,7 +133,7 @@ class MySqlTenantResolver(TenantResolver):
         return TenantMqttTarget(
             tenant_slug=tenant_slug,
             host=host,
-            port=self._mysql_config.mqtt_port,
+            port=row.get("beaver_mqtt_port") or self._mysql_config.mqtt_port,
             username=self._default_username,
             password=self._default_password,
         )
