@@ -12,7 +12,11 @@ Su funcion es:
 - Normalizar el payload si aplica.
 - Publicar el mensaje final hacia el broker MQTT interno de Beaver IoT del tenant.
 
-El topic de salida hacia Beaver se mantiene configurado por `BEAVER_MQTT_OUTPUT_TOPIC`.
+El topic de salida hacia Beaver depende del contrato:
+
+- Legacy Xercode usa `BEAVER_MQTT_OUTPUT_TOPIC`.
+- Vendor adapters usan `beaver.output_topic` desde su JSON si existe.
+- Si el vendor no declara `beaver.output_topic`, se usa `BEAVER_MQTT_OUTPUT_TOPIC` como fallback.
 
 ## Contratos MQTT de entrada soportados
 
@@ -89,10 +93,16 @@ shellies/x/1234/sh/shellyplug0/telemetry/overtemperature
 
 ## Contrato de salida hacia Beaver
 
-El router publica siempre hacia el topic configurado:
+Legacy Xercode publica hacia el topic global configurado:
 
 ```text
 beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
+```
+
+Shelly publica hacia el topic asociado a su template Beaver:
+
+```text
+beaver-iot/mqtt@default/mqtt-device/shelly/telemetry
 ```
 
 La salida final hacia Beaver debe ser JSON plano.
@@ -140,6 +150,7 @@ Actualmente `shelly.json` define:
 - Conversiones de tipo, como `float`, `int`, `string` y `boolean`.
 - `value_map` opcional para convertir valores como `on` y `off` a `true` y `false`.
 - `output.format = flat`, indicando que Beaver recibe JSON plano.
+- `beaver.output_topic`, `beaver.template` y `beaver.template_file`.
 
 El codigo Python aplica reglas genericas:
 
@@ -148,6 +159,24 @@ El codigo Python aplica reglas genericas:
 - Busqueda de mapping por `native_path`.
 - Conversion de tipos.
 - Construccion de salida plana hacia Beaver.
+
+## Relacion adapter JSON y template Beaver
+
+Cada vendor adapter puede declarar el template Beaver asociado:
+
+```json
+{
+  "beaver": {
+    "output_topic": "beaver-iot/mqtt@default/mqtt-device/shelly/telemetry",
+    "template": "shelly-generic",
+    "template_file": "beaver_templates/shelly/shelly-generic.device-template.yaml"
+  }
+}
+```
+
+El router publica mensajes Shelly en `beaver.output_topic`. El template Beaver importado/configurado debe escuchar ese mismo topic.
+
+El archivo YAML en `beaver_templates/` no lo consume directamente `mqtt_router`; es una copia exacta y versionada del device template que debe importarse o configurarse en Beaver. Si se agrega un nuevo campo al adapter, debe agregarse tambien al template YAML.
 
 ## Configuracion Shelly real
 
@@ -230,7 +259,6 @@ Salida hacia Beaver:
 
 ## Proximos pasos recomendados
 
-- Crear template Beaver especifico para Shelly/Xercode.
 - Crear snapshot/cache opcional por dispositivo.
 - Agregar segundo fabricante para validar el motor generico.
 - Anadir tests automaticos de topics y conversions.

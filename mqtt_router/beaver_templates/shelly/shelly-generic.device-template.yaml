@@ -1,0 +1,132 @@
+definition:
+  input:
+    type: object
+    properties:
+      - key: device_id
+        type: string
+        required: true
+        is_device_id: true
+        entity_mapping: 'device_id'
+
+      - key: device_name
+        type: string
+        is_device_name: true
+
+      - key: vendor
+        type: string
+        entity_mapping: 'vendor'
+
+      - key: power
+        type: double
+        entity_mapping: 'power'
+
+      - key: energy
+        type: double
+        entity_mapping: 'energy'
+
+      - key: voltage
+        type: double
+        entity_mapping: 'voltage'
+
+      - key: current
+        type: double
+        entity_mapping: 'current'
+
+      - key: output
+        type: boolean
+        entity_mapping: 'output'
+
+      - key: temperature
+        type: double
+        entity_mapping: 'temperature'
+
+      - key: temperature_f
+        type: double
+        entity_mapping: 'temperature_f'
+
+      - key: overtemperature
+        type: long
+        entity_mapping: 'overtemperature'
+
+      - key: time
+        type: string
+        entity_mapping: 'time'
+
+initial_entities:
+  - identifier: 'device_id'
+    name: 'device_id'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'vendor'
+    name: 'vendor'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'power'
+    name: 'power'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: 'W'
+
+  - identifier: 'energy'
+    name: 'energy'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: 'Wh'
+
+  - identifier: 'voltage'
+    name: 'voltage'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: 'V'
+
+  - identifier: 'current'
+    name: 'current'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: 'A'
+
+  - identifier: 'output'
+    name: 'output'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'temperature'
+    name: 'temperature'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: '℃'
+
+  - identifier: 'temperature_f'
+    name: 'temperature_f'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: '℉'
+
+  - identifier: 'overtemperature'
+    name: 'overtemperature'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'time'
+    name: 'time'
+    value_type: string
+    type: property
+    access_mod: R

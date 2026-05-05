@@ -79,8 +79,12 @@
     "format": "flat",
     "device_id_source": "topic.device_id",
     "device_name_source": "topic.device_id",
-    "time_source": "router_now_iso",
-    "topic": "BEAVER_MQTT_OUTPUT_TOPIC"
+    "time_source": "router_now_iso"
+  },
+  "beaver": {
+    "output_topic": "beaver-iot/mqtt@default/mqtt-device/shelly/telemetry",
+    "template": "shelly-generic",
+    "template_file": "beaver_templates/shelly/shelly-generic.device-template.yaml"
   },
   "meta": {
     "source": "mqtt_router",

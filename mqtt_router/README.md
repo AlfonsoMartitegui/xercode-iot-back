@@ -88,10 +88,10 @@ Output topic to Beaver tenant broker:
 beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 ```
 
-Example:
+Vendor adapters can override the Beaver output topic in their JSON config. Shelly publishes to:
 
 ```text
-beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
+beaver-iot/mqtt@default/mqtt-device/shelly/telemetry
 ```
 
 The mapping is implemented in `mqtt_router/topic_mapper.py` so it can be changed without touching the bridge logic.
@@ -226,9 +226,16 @@ Native topic patterns and supported native paths are declared in `mqtt_router/co
   },
   "output": {
     "format": "flat"
+  },
+  "beaver": {
+    "output_topic": "beaver-iot/mqtt@default/mqtt-device/shelly/telemetry",
+    "template": "shelly-generic",
+    "template_file": "beaver_templates/shelly/shelly-generic.device-template.yaml"
   }
 }
 ```
+
+The template file is versioned in `beaver_templates/shelly/shelly-generic.device-template.yaml`. `mqtt_router` does not load that YAML directly; it is an exact copy of the Beaver device template and Beaver must be configured with the matching template and topic.
 
 The current Shelly mappings are:
 

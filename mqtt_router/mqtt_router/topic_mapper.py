@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from mqtt_router.adapters.mapping_loader import VendorConfigError, load_vendor_configs
+from mqtt_router.adapters.mapping_loader import VendorConfigError, load_vendor_config, load_vendor_configs
 from mqtt_router.adapters.native_topic_matcher import match_topic_pattern
 
 
@@ -58,6 +58,11 @@ class TopicMapper:
         )
 
     def to_tenant_topic(self, incoming: IncomingTopic) -> str:
+        if incoming.vendor is not None:
+            vendor_output_topic = self._vendor_output_topic(incoming.vendor)
+            if vendor_output_topic is not None:
+                return vendor_output_topic
+
         return self._tenant_output_topic
 
     def _parse_native_topic(self, topic: str) -> IncomingTopic | None:
@@ -111,6 +116,26 @@ class TopicMapper:
                 )
 
         return None
+
+    def _vendor_output_topic(self, vendor: str) -> str | None:
+        try:
+            vendor_config = load_vendor_config(vendor)
+        except VendorConfigError:
+            return None
+
+        beaver_config = vendor_config.get("beaver")
+        if not isinstance(beaver_config, dict):
+            return None
+
+        output_topic = beaver_config.get("output_topic")
+        if not isinstance(output_topic, str):
+            return None
+
+        output_topic = output_topic.strip()
+        if not output_topic:
+            return None
+
+        return output_topic
 
 
 def _optional_string(value: object) -> str | None:
