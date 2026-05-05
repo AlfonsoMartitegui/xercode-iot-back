@@ -43,7 +43,7 @@ CENTRAL_MQTT_HOST=localhost
 CENTRAL_MQTT_PORT=1883
 CENTRAL_MQTT_USERNAME=
 CENTRAL_MQTT_PASSWORD=
-CENTRAL_MQTT_TOPIC=xercode/+/telemetry
+CENTRAL_MQTT_TOPIC=#
 CENTRAL_MQTT_CLIENT_ID=xercode-mqtt-router
 
 TENANT_MQTT_DEFAULT_USERNAME=mqtt@default
@@ -70,12 +70,16 @@ Input topic from central broker:
 
 ```text
 xercode/{tenant_slug}/telemetry
+xercode/{tenant_slug}/{vendor}/{device_id}/telemetry
+shellies/x/{tenant_slug}/sh/{device_id}/telemetry/...
 ```
 
 Example:
 
 ```text
 xercode/tenant_a/telemetry
+xercode/tenant_a/shelly/shellyplug-123/telemetry
+shellies/x/tenant_a/sh/shellyplug0/telemetry/relay/0/power
 ```
 
 Output topic to Beaver tenant broker:
@@ -93,6 +97,148 @@ beaver-iot/mqtt@default/mqtt-device/beaver/telemetry
 The mapping is implemented in `mqtt_router/topic_mapper.py` so it can be changed without touching the bridge logic.
 
 Before publishing to Beaver, the router validates that the payload is valid UTF-8 JSON and normalizes it to compact JSON. Invalid JSON is discarded and logged.
+
+When the input topic includes `{vendor}` and `{device_id}`, the router applies an inbound vendor adapter before publishing to the same Beaver output topic. Adapter rules are JSON files under `mqtt_router/configs/vendors/`.
+
+Vendor adapters first build this internal canonical payload shape:
+
+```json
+{
+  "device_id": "...",
+  "vendor": "...",
+  "metrics": {},
+  "status": {},
+  "meta": {}
+}
+```
+
+That canonical object is internal only. Before publishing to Beaver, `metrics` and `status` are flattened into root fields, and `meta` is not published by default.
+
+### Vendor adapters
+
+Vendor adapters are generic JSON mappings. To add another vendor, create:
+
+```text
+mqtt_router/configs/vendors/{vendor}.json
+```
+
+Each mapping copies a value from the incoming JSON payload into the internal canonical payload:
+
+```json
+{
+  "vendor": "example",
+  "inbound": {
+    "mappings": [
+      {
+        "payload_path": "source_value",
+        "target_path": "metrics.target_value"
+      }
+    ]
+  },
+  "meta": {
+    "source": "mqtt_router",
+    "adapter": "json_mapping"
+  }
+}
+```
+
+Missing input fields are ignored. If the vendor config does not exist or the payload cannot be transformed, the message is discarded and the MQTT loop keeps running.
+
+For vendor topics, the payload published to Beaver is flat. `device_id` always comes from the MQTT topic, even if the original payload also includes `device_id`. `device_name` comes from the original payload when present; otherwise it uses the topic `device_id`. `time` comes from `time`, then `ts`, and if neither exists the router generates the current timestamp.
+
+Shelly example:
+
+```text
+Topic:
+xercode/tenant_a/shelly/shellyplug-123/telemetry
+```
+
+```json
+{
+  "temperature": 21.5,
+  "apower": 42.1,
+  "voltage": 230.4,
+  "current": 0.18,
+  "output": true,
+  "ts": "2026-05-05T18:10:00"
+}
+```
+
+Payload published to Beaver:
+
+```json
+{
+  "device_id": "shellyplug-123",
+  "device_name": "shellyplug-123",
+  "vendor": "shelly",
+  "temperature": 21.5,
+  "power": 42.1,
+  "voltage": 230.4,
+  "current": 0.18,
+  "output": true,
+  "time": "2026-05-05T18:10:00"
+}
+```
+
+### Native Shelly topics
+
+Some Shelly devices publish native scalar topics under `shellies/#`. Configure the Shelly custom MQTT prefix with the short contract:
+
+```text
+x/{tenant_slug}/sh/{device_id}/telemetry
+```
+
+The router accepts the resulting native topics:
+
+```text
+shellies/x/{tenant_slug}/sh/{device_id}/telemetry/{native_path...}
+```
+
+These messages are published to Beaver as partial flat telemetry events. The router does not cache or rebuild complete device state.
+
+For native Shelly topics:
+
+```text
+tenant_slug = {tenant_slug}
+vendor = shelly
+device_id = {device_id}
+device_name = {device_id}
+```
+
+Supported native paths:
+
+| Topic suffix | Example payload | Beaver field |
+| --- | --- | --- |
+| `relay/0/power` | `0.00` | `power: 0.0` |
+| `relay/0/energy` | `0` / `12.5` | `energy: 0` / `12.5` |
+| `relay/0` | `on` / `off` | `output: true` / `false` |
+| `temperature` | `33.46` | `temperature: 33.46` |
+| `temperature_f` | `92.23` | `temperature_f: 92.23` |
+| `overtemperature` | `0` | `overtemperature: 0` |
+
+Example:
+
+```text
+shellies/x/1234/sh/shellyplug0/telemetry/temperature
+```
+
+```text
+33.46
+```
+
+Payload published to Beaver:
+
+```json
+{
+  "device_id": "shellyplug0",
+  "device_name": "shellyplug0",
+  "vendor": "shelly",
+  "temperature": 33.46,
+  "time": "2026-05-05T18:30:00"
+}
+```
+
+Unsupported native paths or non-convertible payloads are discarded with a warning. The older `shellies/xercode/{tenant_slug}/telemetry/...` shape is intentionally discarded because it does not carry a reliable device id.
 
 ## Tenant Resolver
 

@@ -1,0 +1,31 @@
+{
+  "vendor": "shelly",
+  "inbound": {
+    "mappings": [
+      {
+        "payload_path": "temperature",
+        "target_path": "metrics.temperature"
+      },
+      {
+        "payload_path": "apower",
+        "target_path": "metrics.power"
+      },
+      {
+        "payload_path": "voltage",
+        "target_path": "metrics.voltage"
+      },
+      {
+        "payload_path": "current",
+        "target_path": "metrics.current"
+      },
+      {
+        "payload_path": "output",
+        "target_path": "status.output"
+      }
+    ]
+  },
+  "meta": {
+    "source": "mqtt_router",
+    "adapter": "json_mapping"
+  }
+}

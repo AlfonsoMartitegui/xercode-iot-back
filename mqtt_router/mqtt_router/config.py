@@ -73,8 +73,8 @@ def load_config() -> AppConfig:
             port=_int_env("CENTRAL_MQTT_PORT", 1883),
             username=_optional_env("CENTRAL_MQTT_USERNAME"),
             password=_optional_env("CENTRAL_MQTT_PASSWORD"),
-            topic=os.getenv("CENTRAL_MQTT_TOPIC", "xercode/+/telemetry").strip()
-            or "xercode/+/telemetry",
+            topic=os.getenv("CENTRAL_MQTT_TOPIC", "#").strip()
+            or "#",
             client_id=os.getenv("CENTRAL_MQTT_CLIENT_ID", "xercode-mqtt-router").strip()
             or "xercode-mqtt-router",
         ),

@@ -6,9 +6,17 @@ import time
 
 import paho.mqtt.client as mqtt
 
+from mqtt_router.adapters import (
+    ShellyNativeTransformError,
+    VendorConfigError,
+    VendorTransformError,
+    load_vendor_config,
+    transform_shelly_native,
+    transform_inbound,
+)
 from mqtt_router.config import CentralMqttConfig
 from mqtt_router.tenant_resolver import TenantMqttTarget, TenantResolver
-from mqtt_router.topic_mapper import TopicMapper
+from mqtt_router.topic_mapper import IncomingTopic, TopicMapper
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +119,13 @@ class MqttBridge:
 
         incoming = self._topic_mapper.parse_incoming(topic)
         if incoming is None:
+            if topic.startswith("shellies/xercode/"):
+                logger.warning(
+                    "Deprecated Shelly native topic discarded topic=%s expected=shellies/x/{tenant}/sh/{device}/telemetry/...",
+                    topic,
+                )
+                return
+
             logger.warning("Invalid topic received topic=%s", topic)
             return
 
@@ -133,10 +148,10 @@ class MqttBridge:
             tenant_topic,
         )
 
-        tenant_payload = self._prepare_beaver_payload(message.payload)
+        tenant_payload = self._prepare_tenant_payload(incoming, message.payload)
         if tenant_payload is None:
             logger.error(
-                "Invalid JSON payload discarded tenant=%s topic=%s payload_preview=%s",
+                "Payload discarded tenant=%s topic=%s payload_preview=%s",
                 target.tenant_slug,
                 topic,
                 _payload_preview(message.payload),
@@ -162,6 +177,45 @@ class MqttBridge:
             return None
 
         return json.dumps(parsed_payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+    def _prepare_tenant_payload(self, incoming: IncomingTopic, payload: bytes) -> bytes | None:
+        if incoming.vendor is None:
+            return self._prepare_beaver_payload(payload)
+
+        if incoming.native_topic:
+            try:
+                return transform_shelly_native(incoming, payload)
+            except (ShellyNativeTransformError, UnicodeDecodeError) as exc:
+                logger.warning(
+                    "Shelly native payload discarded tenant=%s device_id=%s native_path=%s error=%s",
+                    incoming.tenant_slug,
+                    incoming.device_id,
+                    incoming.native_path,
+                    exc,
+                )
+                return None
+
+        try:
+            vendor_config = load_vendor_config(incoming.vendor)
+            return transform_inbound(incoming, payload, vendor_config)
+        except VendorConfigError as exc:
+            logger.warning(
+                "Vendor payload discarded: config error tenant=%s vendor=%s device_id=%s error=%s",
+                incoming.tenant_slug,
+                incoming.vendor,
+                incoming.device_id,
+                exc,
+            )
+        except VendorTransformError as exc:
+            logger.error(
+                "Vendor payload discarded: transform error tenant=%s vendor=%s device_id=%s error=%s",
+                incoming.tenant_slug,
+                incoming.vendor,
+                incoming.device_id,
+                exc,
+            )
+
+        return None
 
     def _publish_to_tenant(
         self,
