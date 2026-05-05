@@ -1,5 +1,7 @@
 {
   "vendor": "shelly",
+  "version": 1,
+  "description": "Production mapping for the first Xercode Shelly Plug integration. Supports simulated JSON telemetry and real Shelly native MQTT telemetry. Inbound telemetry only.",
   "native_topics": {
     "patterns": [
       {
@@ -73,8 +75,16 @@
       }
     ]
   },
+  "output": {
+    "format": "flat",
+    "device_id_source": "topic.device_id",
+    "device_name_source": "topic.device_id",
+    "time_source": "router_now_iso",
+    "topic": "BEAVER_MQTT_OUTPUT_TOPIC"
+  },
   "meta": {
     "source": "mqtt_router",
-    "adapter": "json_mapping"
+    "adapter": "json_mapping",
+    "device_family": "Shelly Plug"
   }
 }

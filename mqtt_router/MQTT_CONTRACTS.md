@@ -134,10 +134,12 @@ mqtt_router/configs/vendors/{vendor}.json
 
 Actualmente `shelly.json` define:
 
+- `vendor`, `version` y `description`.
 - Mappings para payload JSON normalizado.
 - Mappings para native topics.
 - Conversiones de tipo, como `float`, `int`, `string` y `boolean`.
 - `value_map` opcional para convertir valores como `on` y `off` a `true` y `false`.
+- `output.format = flat`, indicando que Beaver recibe JSON plano.
 
 El codigo Python aplica reglas genericas:
 

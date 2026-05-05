@@ -206,6 +206,9 @@ Native topic patterns and supported native paths are declared in `mqtt_router/co
 
 ```json
 {
+  "vendor": "shelly",
+  "version": 1,
+  "description": "Production mapping for the first Xercode Shelly Plug integration. Supports simulated JSON telemetry and real Shelly native MQTT telemetry. Inbound telemetry only.",
   "native_topics": {
     "patterns": [
       {
@@ -220,6 +223,9 @@ Native topic patterns and supported native paths are declared in `mqtt_router/co
         "type": "float"
       }
     ]
+  },
+  "output": {
+    "format": "flat"
   }
 }
 ```
