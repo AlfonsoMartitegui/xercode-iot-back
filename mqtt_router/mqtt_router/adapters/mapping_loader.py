@@ -37,5 +37,13 @@ def load_vendor_config(vendor: str) -> dict[str, object]:
     return config
 
 
+def load_vendor_configs() -> list[dict[str, object]]:
+    configs: list[dict[str, object]] = []
+    for config_path in sorted(_vendors_config_dir().glob("*.json")):
+        configs.append(load_vendor_config(config_path.stem))
+
+    return configs
+
+
 def _vendors_config_dir() -> Path:
     return Path(__file__).resolve().parents[1] / "configs" / "vendors"

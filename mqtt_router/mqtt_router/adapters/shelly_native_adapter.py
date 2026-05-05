@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
+from mqtt_router.adapters.value_converter import ValueConversionError, convert_value
 from mqtt_router.topic_mapper import IncomingTopic
 
 
@@ -10,80 +11,74 @@ class ShellyNativeTransformError(Exception):
     pass
 
 
-def transform_shelly_native(incoming: IncomingTopic, payload: bytes) -> bytes:
-    if not incoming.native_path or not incoming.device_id:
-        raise ShellyNativeTransformError("Shelly native path and device_id are required")
+def transform_shelly_native(
+    incoming: IncomingTopic,
+    payload: bytes,
+    vendor_config: dict[str, object],
+) -> bytes:
+    if not incoming.vendor or not incoming.native_path or not incoming.device_id:
+        raise ShellyNativeTransformError("Vendor, native_path and device_id are required")
 
     payload_text = payload.decode("utf-8", errors="strict").strip()
-    field_name, value = _convert_native_value(incoming.native_path, payload_text)
+    mapping = _native_mapping_for_path(vendor_config, incoming.native_path)
+    target_key = mapping["target_key"]
+
+    try:
+        converted_value = convert_value(
+            payload_text,
+            mapping["type"],
+            _value_map(mapping.get("value_map")),
+        )
+    except ValueConversionError as exc:
+        raise ShellyNativeTransformError(str(exc)) from exc
 
     beaver_payload = {
         "device_id": incoming.device_id,
         "device_name": incoming.device_id,
-        "vendor": "shelly",
-        field_name: value,
+        "vendor": incoming.vendor,
+        target_key: converted_value,
         "time": datetime.now().replace(microsecond=0).isoformat(),
     }
 
     return json.dumps(beaver_payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
-def _convert_native_value(native_path: str, payload_text: str) -> tuple[str, object]:
-    if native_path == "relay/0/power":
-        return "power", _float_value(payload_text, native_path)
+def _native_mapping_for_path(
+    vendor_config: dict[str, object],
+    native_path: str,
+) -> dict[str, object]:
+    native_topics = vendor_config.get("native_topics")
+    if not isinstance(native_topics, dict):
+        raise ShellyNativeTransformError("Vendor config missing native_topics object")
 
-    if native_path == "relay/0/energy":
-        return "energy", _number_value(payload_text, native_path)
+    mappings = native_topics.get("mappings")
+    if not isinstance(mappings, list):
+        raise ShellyNativeTransformError("Vendor config missing native_topics.mappings list")
 
-    if native_path == "relay/0":
-        normalized_payload = payload_text.lower()
-        if normalized_payload == "on":
-            return "output", True
-        if normalized_payload == "off":
-            return "output", False
-        raise ShellyNativeTransformError(
-            f"Unsupported Shelly relay payload path={native_path} payload={payload_text}"
-        )
+    for mapping in mappings:
+        if not isinstance(mapping, dict):
+            raise ShellyNativeTransformError("Native mapping must be an object")
 
-    if native_path == "temperature":
-        return "temperature", _float_value(payload_text, native_path)
+        if mapping.get("native_path") != native_path:
+            continue
 
-    if native_path == "temperature_f":
-        return "temperature_f", _float_value(payload_text, native_path)
+        target_key = mapping.get("target_key")
+        value_type = mapping.get("type")
+        if not isinstance(target_key, str) or not isinstance(value_type, str):
+            raise ShellyNativeTransformError("Native mapping requires target_key and type")
 
-    if native_path == "overtemperature":
-        return "overtemperature", _int_value(payload_text, native_path)
+        return {
+            "target_key": target_key,
+            "type": value_type,
+            "value_map": mapping.get("value_map"),
+        }
 
-    raise ShellyNativeTransformError(f"Unsupported Shelly native path={native_path}")
-
-
-def _float_value(payload_text: str, native_path: str) -> float:
-    try:
-        return float(payload_text)
-    except ValueError as exc:
-        raise ShellyNativeTransformError(
-            f"Shelly payload is not a float path={native_path} payload={payload_text}"
-        ) from exc
+    raise ShellyNativeTransformError(f"Unsupported native path={native_path}")
 
 
-def _int_value(payload_text: str, native_path: str) -> int:
-    try:
-        return int(payload_text)
-    except ValueError as exc:
-        raise ShellyNativeTransformError(
-            f"Shelly payload is not an integer path={native_path} payload={payload_text}"
-        ) from exc
-
-
-def _number_value(payload_text: str, native_path: str) -> int | float:
-    try:
-        value = float(payload_text)
-    except ValueError as exc:
-        raise ShellyNativeTransformError(
-            f"Shelly payload is not numeric path={native_path} payload={payload_text}"
-        ) from exc
-
-    if value.is_integer():
-        return int(value)
-
-    return value
+def _value_map(value: object) -> dict[str, object] | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise ShellyNativeTransformError("Native mapping value_map must be an object")
+    return {str(key).lower(): mapped_value for key, mapped_value in value.items()}

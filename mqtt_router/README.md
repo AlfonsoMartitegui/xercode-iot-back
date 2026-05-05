@@ -131,13 +131,10 @@ Each mapping copies a value from the incoming JSON payload into the internal can
     "mappings": [
       {
         "payload_path": "source_value",
-        "target_path": "metrics.target_value"
+        "target_key": "target_value",
+        "type": "float"
       }
     ]
-  },
-  "meta": {
-    "source": "mqtt_router",
-    "adapter": "json_mapping"
   }
 }
 ```
@@ -205,7 +202,29 @@ device_id = {device_id}
 device_name = {device_id}
 ```
 
-Supported native paths:
+Native topic patterns and supported native paths are declared in `mqtt_router/configs/vendors/shelly.json`, not in Python. The Shelly config contains:
+
+```json
+{
+  "native_topics": {
+    "patterns": [
+      {
+        "pattern": "shellies/x/{tenant_slug}/sh/{device_id}/telemetry/{native_path}",
+        "native_path_mode": "rest"
+      }
+    ],
+    "mappings": [
+      {
+        "native_path": "relay/0/power",
+        "target_key": "power",
+        "type": "float"
+      }
+    ]
+  }
+}
+```
+
+The current Shelly mappings are:
 
 | Topic suffix | Example payload | Beaver field |
 | --- | --- | --- |

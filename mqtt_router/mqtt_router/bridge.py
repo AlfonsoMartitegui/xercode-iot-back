@@ -6,14 +6,12 @@ import time
 
 import paho.mqtt.client as mqtt
 
-from mqtt_router.adapters import (
+from mqtt_router.adapters.mapping_loader import VendorConfigError, load_vendor_config
+from mqtt_router.adapters.shelly_native_adapter import (
     ShellyNativeTransformError,
-    VendorConfigError,
-    VendorTransformError,
-    load_vendor_config,
     transform_shelly_native,
-    transform_inbound,
 )
+from mqtt_router.adapters.vendor_adapter import VendorTransformError, transform_inbound
 from mqtt_router.config import CentralMqttConfig
 from mqtt_router.tenant_resolver import TenantMqttTarget, TenantResolver
 from mqtt_router.topic_mapper import IncomingTopic, TopicMapper
@@ -184,8 +182,9 @@ class MqttBridge:
 
         if incoming.native_topic:
             try:
-                return transform_shelly_native(incoming, payload)
-            except (ShellyNativeTransformError, UnicodeDecodeError) as exc:
+                vendor_config = load_vendor_config(incoming.vendor)
+                return transform_shelly_native(incoming, payload, vendor_config)
+            except (ShellyNativeTransformError, VendorConfigError, UnicodeDecodeError) as exc:
                 logger.warning(
                     "Shelly native payload discarded tenant=%s device_id=%s native_path=%s error=%s",
                     incoming.tenant_slug,
