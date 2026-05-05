@@ -105,7 +105,11 @@ class MySqlTenantResolver(TenantResolver):
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT code, beaver_base_url, beaver_mqtt_host, beaver_mqtt_port
+                    SELECT
+                        code,
+                        beaver_base_url,
+                        beaver_mqtt_host,
+                        beaver_mqtt_port
                     FROM tenants
                     WHERE code = %s
                       AND is_active = 1
@@ -130,10 +134,16 @@ class MySqlTenantResolver(TenantResolver):
             )
             return None
 
+        port = _mqtt_port_or_default(
+            row.get("beaver_mqtt_port"),
+            self._mysql_config.mqtt_port,
+            tenant_slug,
+        )
+
         return TenantMqttTarget(
             tenant_slug=tenant_slug,
             host=host,
-            port=row.get("beaver_mqtt_port") or self._mysql_config.mqtt_port,
+            port=port,
             username=self._default_username,
             password=self._default_password,
         )
@@ -153,6 +163,31 @@ def _host_from_beaver_base_url(beaver_base_url: str | None) -> str | None:
 
     parsed = urlparse(f"//{value}")
     return parsed.hostname
+
+
+def _mqtt_port_or_default(value, default_port: int, tenant_slug: str) -> int:
+    if value is None or value == "":
+        return default_port
+
+    try:
+        port = int(str(value).strip())
+    except (TypeError, ValueError):
+        logger.error(
+            "Tenant has invalid beaver_mqtt_port tenant=%s beaver_mqtt_port=%s",
+            tenant_slug,
+            value,
+        )
+        return default_port
+
+    if port < 1 or port > 65535:
+        logger.error(
+            "Tenant has out-of-range beaver_mqtt_port tenant=%s beaver_mqtt_port=%s",
+            tenant_slug,
+            value,
+        )
+        return default_port
+
+    return port
 
 
 class HubTenantResolver(TenantResolver):

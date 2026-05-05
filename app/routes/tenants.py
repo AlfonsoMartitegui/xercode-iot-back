@@ -1,7 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 from app.core.encryption import encrypt_secret
@@ -57,6 +57,11 @@ class TenantCreate(BaseModel):
     beaver_admin_password: str | None = None
     is_active: bool = True
 
+    @field_validator("beaver_mqtt_port", mode="before")
+    @classmethod
+    def validate_beaver_mqtt_port(cls, value):
+        return normalize_mqtt_port(value)
+
 
 class TenantUpdate(BaseModel):
     name: str | None = None
@@ -69,6 +74,11 @@ class TenantUpdate(BaseModel):
     beaver_admin_username: str | None = None
     beaver_admin_password: str | None = None
     is_active: bool | None = None
+
+    @field_validator("beaver_mqtt_port", mode="before")
+    @classmethod
+    def validate_beaver_mqtt_port(cls, value):
+        return normalize_mqtt_port(value)
 
 
 class TenantDomainCreate(BaseModel):
@@ -112,7 +122,7 @@ def build_tenant_out(db: Session, tenant: Tenant) -> TenantOut:
         redirect_url=tenant.redirect_url,
         beaver_base_url=tenant.beaver_base_url,
         beaver_mqtt_host=tenant.beaver_mqtt_host,
-        beaver_mqtt_port=tenant.beaver_mqtt_port,
+        beaver_mqtt_port=normalize_mqtt_port_for_output(tenant.beaver_mqtt_port),
         beaver_admin_username=tenant.beaver_admin_username,
         is_active=tenant.is_active,
         domains=[
@@ -146,6 +156,29 @@ def normalize_domain(raw_domain: str) -> str:
         domain = domain.split("://", 1)[1]
     domain = domain.split("/", 1)[0]
     return domain.rstrip("/")
+
+
+def normalize_mqtt_port(value) -> str | None:
+    if value is None:
+        return None
+
+    port = str(value).strip()
+    if not port:
+        return None
+    if not port.isdigit():
+        raise ValueError("beaver_mqtt_port debe ser un entero entre 1 y 65535")
+
+    port_number = int(port)
+    if port_number < 1 or port_number > 65535:
+        raise ValueError("beaver_mqtt_port debe ser un entero entre 1 y 65535")
+
+    return port
+
+
+def normalize_mqtt_port_for_output(value) -> str | None:
+    if value is None:
+        return None
+    return str(value).strip() or None
 
 
 def build_tenant_domain_out(domain: TenantDomain) -> TenantDomainOut:
@@ -252,7 +285,7 @@ def update_tenant(
         tenant.beaver_base_url = tenant_in.beaver_base_url
     if tenant_in.beaver_mqtt_host is not None:
         tenant.beaver_mqtt_host = tenant_in.beaver_mqtt_host
-    if tenant_in.beaver_mqtt_port is not None:
+    if "beaver_mqtt_port" in tenant_in.model_fields_set:
         tenant.beaver_mqtt_port = tenant_in.beaver_mqtt_port
     if tenant_in.beaver_admin_username is not None:
         tenant.beaver_admin_username = tenant_in.beaver_admin_username
