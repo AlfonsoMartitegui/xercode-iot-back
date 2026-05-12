@@ -1,0 +1,528 @@
+definition:
+  input:
+    type: object
+    properties:
+      - key: device_id
+        type: string
+        required: true
+        is_device_id: true
+        entity_mapping: 'device_id'
+
+      - key: device_name
+        type: string
+        is_device_name: true
+
+      - key: vendor
+        type: string
+        entity_mapping: 'vendor'
+
+      - key: power
+        type: double
+        entity_mapping: 'power'
+
+      - key: energy
+        type: double
+        entity_mapping: 'energy'
+
+      - key: voltage
+        type: double
+        entity_mapping: 'voltage'
+
+      - key: current
+        type: double
+        entity_mapping: 'current'
+
+      - key: output
+        type: boolean
+        entity_mapping: 'output'
+
+      - key: temperature
+        type: double
+        entity_mapping: 'temperature'
+
+      - key: temperature_f
+        type: double
+        entity_mapping: 'temperature_f'
+
+      - key: overtemperature
+        type: long
+        entity_mapping: 'overtemperature'
+
+      - key: time
+        type: string
+        entity_mapping: 'time'
+
+      - key: wifi_connected
+        type: boolean
+        entity_mapping: 'wifi_sta.connected'
+
+      - key: wifi_ssid
+        type: string
+        entity_mapping: 'wifi_sta.ssid'
+
+      - key: wifi_ip
+        type: string
+        entity_mapping: 'wifi_sta.ip'
+
+      - key: wifi_rssi
+        type: long
+        entity_mapping: 'wifi_sta.rssi'
+
+      - key: cloud_enabled
+        type: boolean
+        entity_mapping: 'cloud.enabled'
+
+      - key: cloud_connected
+        type: boolean
+        entity_mapping: 'cloud.connected'
+
+      - key: mqtt_connected
+        type: boolean
+        entity_mapping: 'mqtt.connected'
+
+      - key: unixtime
+        type: long
+        entity_mapping: 'unixtime'
+
+      - key: serial
+        type: long
+        entity_mapping: 'serial'
+
+      - key: has_update
+        type: boolean
+        entity_mapping: 'has_update'
+
+      - key: mac
+        type: string
+        entity_mapping: 'mac'
+
+      - key: cfg_changed_cnt
+        type: long
+        entity_mapping: 'cfg_changed_cnt'
+
+      - key: actions_skipped
+        type: long
+        entity_mapping: 'actions_stats.skipped'
+
+      - key: sleep_time
+        type: long
+        entity_mapping: 'sleep_time'
+
+      - key: lux
+        type: double
+        entity_mapping: 'lux.value'
+
+      - key: illumination
+        type: string
+        entity_mapping: 'lux.illumination'
+
+      - key: lux_valid
+        type: boolean
+        entity_mapping: 'lux.is_valid'
+
+      - key: vibration
+        type: boolean
+        entity_mapping: 'sensor.vibration'
+
+      - key: motion
+        type: boolean
+        entity_mapping: 'sensor.motion'
+
+      - key: sensor_timestamp
+        type: long
+        entity_mapping: 'sensor.timestamp'
+
+      - key: sensor_active
+        type: boolean
+        entity_mapping: 'sensor.active'
+
+      - key: sensor_valid
+        type: boolean
+        entity_mapping: 'sensor.is_valid'
+
+      - key: battery
+        type: double
+        entity_mapping: 'bat.value'
+
+      - key: battery_voltage
+        type: double
+        entity_mapping: 'bat.voltage'
+
+      - key: charger
+        type: boolean
+        entity_mapping: 'charger'
+
+      - key: update_status
+        type: string
+        entity_mapping: 'update.status'
+
+      - key: update_available
+        type: boolean
+        entity_mapping: 'update.has_update'
+
+      - key: update_new_version
+        type: string
+        entity_mapping: 'update.new_version'
+
+      - key: update_old_version
+        type: string
+        entity_mapping: 'update.old_version'
+   
+      - key: ram_total
+        type: long
+        entity_mapping: 'ram_total'
+
+      - key: ram_free
+        type: long
+        entity_mapping: 'ram_free'
+
+      - key: fs_size
+        type: long
+        entity_mapping: 'fs_size'
+
+      - key: fs_free
+        type: long
+        entity_mapping: 'fs_free'
+
+      - key: uptime
+        type: long
+        entity_mapping: 'uptime'
+
+      - key: fw_device
+        type: string
+        entity_mapping: 'fw_info.device'
+
+      - key: firmware
+        type: string
+        entity_mapping: 'fw_info.fw'
+
+      - key: ps_mode
+        type: long
+        entity_mapping: 'ps_mode'
+
+      - key: dbg_flags
+        type: long
+        entity_mapping: 'dbg_flags'
+
+initial_entities:
+  - identifier: 'device_id'
+    name: 'device_id'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'vendor'
+    name: 'vendor'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'power'
+    name: 'power'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: 'W'
+
+  - identifier: 'energy'
+    name: 'energy'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: 'Wh'
+
+  - identifier: 'voltage'
+    name: 'voltage'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: 'V'
+
+  - identifier: 'current'
+    name: 'current'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: 'A'
+
+  - identifier: 'output'
+    name: 'output'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'temperature'
+    name: 'temperature'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: '℃'
+
+  - identifier: 'temperature_f'
+    name: 'temperature_f'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: '℉'
+
+  - identifier: 'overtemperature'
+    name: 'overtemperature'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'time'
+    name: 'time'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'wifi_connected'
+    name: 'wifi_connected'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'wifi_ssid'
+    name: 'wifi_ssid'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'wifi_ip'
+    name: 'wifi_ip'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'wifi_rssi'
+    name: 'wifi_rssi'
+    value_type: long
+    type: property
+    access_mod: R
+    attributes:
+      unit: 'dBm'
+
+  - identifier: 'cloud_enabled'
+    name: 'cloud_enabled'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'cloud_connected'
+    name: 'cloud_connected'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'mqtt_connected'
+    name: 'mqtt_connected'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'unixtime'
+    name: 'unixtime'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'serial'
+    name: 'serial'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'has_update'
+    name: 'has_update'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'mac'
+    name: 'mac'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'cfg_changed_cnt'
+    name: 'cfg_changed_cnt'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'actions_skipped'
+    name: 'actions_skipped'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'sleep_time'
+    name: 'sleep_time'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'lux'
+    name: 'lux'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: 'lx'
+
+  - identifier: 'illumination'
+    name: 'illumination'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'lux_valid'
+    name: 'lux_valid'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'vibration'
+    name: 'vibration'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'motion'
+    name: 'motion'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'sensor_timestamp'
+    name: 'sensor_timestamp'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'sensor_active'
+    name: 'sensor_active'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'sensor_valid'
+    name: 'sensor_valid'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'battery'
+    name: 'battery'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: '%'
+
+  - identifier: 'battery_voltage'
+    name: 'battery_voltage'
+    value_type: double
+    type: property
+    access_mod: R
+    attributes:
+      unit: 'V'
+
+  - identifier: 'charger'
+    name: 'charger'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'update_status'
+    name: 'update_status'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'update_available'
+    name: 'update_available'
+    value_type: boolean
+    type: property
+    access_mod: R
+
+  - identifier: 'update_new_version'
+    name: 'update_new_version'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'update_old_version'
+    name: 'update_old_version'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'update_beta_version'
+    name: 'update_beta_version'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'ram_total'
+    name: 'ram_total'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'ram_free'
+    name: 'ram_free'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'fs_size'
+    name: 'fs_size'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'fs_free'
+    name: 'fs_free'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'uptime'
+    name: 'uptime'
+    value_type: long
+    type: property
+    access_mod: R
+    attributes:
+      unit: 's'
+
+  - identifier: 'fw_device'
+    name: 'fw_device'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'firmware'
+    name: 'firmware'
+    value_type: string
+    type: property
+    access_mod: R
+
+  - identifier: 'ps_mode'
+    name: 'ps_mode'
+    value_type: long
+    type: property
+    access_mod: R
+
+  - identifier: 'dbg_flags'
+    name: 'dbg_flags'
+    value_type: long
+    type: property
+    access_mod: R
