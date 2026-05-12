@@ -43,6 +43,186 @@
         "native_path": "overtemperature",
         "target_key": "overtemperature",
         "type": "int"
+      },
+      {
+        "native_path": "status",
+        "payload_path": "motion",
+        "target_key": "motion",
+        "type": "boolean"
+      },
+      {
+        "native_path": "status",
+        "payload_path": "vibration",
+        "target_key": "vibration",
+        "type": "boolean"
+      },
+      {
+        "native_path": "status",
+        "payload_path": "lux",
+        "target_key": "lux",
+        "type": "float"
+      },
+      {
+        "native_path": "status",
+        "payload_path": "bat",
+        "target_key": "battery",
+        "type": "float"
+      },
+      {
+        "native_path": "status",
+        "payload_path": "timestamp",
+        "target_key": "sensor_timestamp",
+        "type": "int"
+      },
+      {
+        "native_path": "status",
+        "payload_path": "active",
+        "target_key": "sensor_active",
+        "type": "boolean"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "wifi_sta.connected",
+        "target_key": "wifi_connected",
+        "type": "boolean"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "wifi_sta.ssid",
+        "target_key": "wifi_ssid",
+        "type": "string"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "wifi_sta.ip",
+        "target_key": "wifi_ip",
+        "type": "string"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "wifi_sta.rssi",
+        "target_key": "wifi_rssi",
+        "type": "int"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "cloud.enabled",
+        "target_key": "cloud_enabled",
+        "type": "boolean"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "cloud.connected",
+        "target_key": "cloud_connected",
+        "type": "boolean"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "mqtt.connected",
+        "target_key": "mqtt_connected",
+        "type": "boolean"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "unixtime",
+        "target_key": "unixtime",
+        "type": "int"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "mac",
+        "target_key": "mac",
+        "type": "string"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "lux.value",
+        "target_key": "lux",
+        "type": "float"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "lux.illumination",
+        "target_key": "illumination",
+        "type": "string"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "lux.is_valid",
+        "target_key": "lux_valid",
+        "type": "boolean"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "sensor.motion",
+        "target_key": "motion",
+        "type": "boolean"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "sensor.vibration",
+        "target_key": "vibration",
+        "type": "boolean"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "sensor.timestamp",
+        "target_key": "sensor_timestamp",
+        "type": "int"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "sensor.active",
+        "target_key": "sensor_active",
+        "type": "boolean"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "sensor.is_valid",
+        "target_key": "sensor_valid",
+        "type": "boolean"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "bat.value",
+        "target_key": "battery",
+        "type": "float"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "bat.voltage",
+        "target_key": "battery_voltage",
+        "type": "float"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "charger",
+        "target_key": "charger",
+        "type": "boolean"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "uptime",
+        "target_key": "uptime",
+        "type": "int"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "fw_info.device",
+        "target_key": "fw_device",
+        "type": "string"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "fw_info.fw",
+        "target_key": "firmware",
+        "type": "string"
+      },
+      {
+        "native_path": "info",
+        "payload_path": "time",
+        "target_key": "time",
+        "type": "string"
       }
     ]
   },
