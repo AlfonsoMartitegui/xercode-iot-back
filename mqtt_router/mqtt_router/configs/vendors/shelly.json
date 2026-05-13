@@ -45,6 +45,51 @@
         "type": "int"
       },
       {
+        "native_path": "sensor/temperature",
+        "target_key": "temperature",
+        "type": "float"
+      },
+      {
+        "native_path": "sensor/battery",
+        "target_key": "battery",
+        "type": "float"
+      },
+      {
+        "native_path": "sensor/error",
+        "target_key": "sensor_error",
+        "type": "int"
+      },
+      {
+        "native_path": "sensor/act_reasons",
+        "target_key": "act_reasons",
+        "type": "string"
+      },
+      {
+        "native_path": "sensor/flood",
+        "target_key": "flood",
+        "type": "boolean"
+      },
+      {
+        "native_path": "sensor/tilt",
+        "target_key": "tilt",
+        "type": "float"
+      },
+      {
+        "native_path": "sensor/vibration",
+        "target_key": "vibration",
+        "type": "float"
+      },
+      {
+        "native_path": "sensor/lux",
+        "target_key": "lux",
+        "type": "float"
+      },
+      {
+        "native_path": "sensor/illumination",
+        "target_key": "illumination",
+        "type": "string"
+      },
+      {
         "native_path": "status",
         "payload_path": "motion",
         "target_key": "motion",
