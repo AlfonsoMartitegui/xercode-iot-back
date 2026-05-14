@@ -1,0 +1,11 @@
+﻿sequenceDiagram
+    participant C as Cliente
+    participant API as POST /auth/login
+    participant DB as MySQL
+    C->>API: username, password, Host
+    API->>DB: Resolver dominio y tenant
+    API->>DB: Buscar usuario
+    API->>API: Verificar password bcrypt
+    API->>DB: Validar membresía si aplica
+    API->>API: Emitir JWT
+    API-->>C: access_token

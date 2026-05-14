@@ -1,0 +1,8 @@
+﻿flowchart TD
+    A[Superadmin crea Tenant] --> B[Configura dominios]
+    B --> C[Configura URL y credenciales Beaver]
+    C --> D[Prueba autenticación Beaver]
+    D --> E[Consulta roles Beaver]
+    E --> F[Asigna usuarios al tenant]
+    F --> G[Asocia beaver_role_id]
+    G --> H[Provisiona o sincroniza usuario en Beaver]

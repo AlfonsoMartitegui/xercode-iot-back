@@ -1,0 +1,12 @@
+﻿sequenceDiagram
+    participant C as Cliente autenticado
+    participant API as /auth/beaver-handoff
+    participant DB as MySQL
+    participant Bridge as hub_bridge
+    participant Beaver as Beaver
+    C->>API: Solicita handoff
+    API->>DB: Valida usuario, tenant y membresía
+    API->>Bridge: Genera JWT RS256 temporal
+    Bridge-->>API: code, expires_in, beaver_tenant_id
+    API-->>C: redirect_url, exchange_url, code
+    C->>Beaver: Intercambia code en exchange_url

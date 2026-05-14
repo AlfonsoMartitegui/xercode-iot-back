@@ -1,0 +1,40 @@
+﻿erDiagram
+    TENANTS ||--o{ TENANT_DOMAINS : tiene
+    TENANTS ||--o{ USER_TENANTS : asigna
+    USERS ||--o{ USER_TENANTS : pertenece
+
+    TENANTS {
+        int id PK
+        string code UK
+        string name
+        string redirect_url
+        string beaver_base_url
+        string beaver_admin_username
+        string beaver_admin_password_encrypted
+        boolean is_active
+    }
+
+    TENANT_DOMAINS {
+        int id PK
+        int tenant_id FK
+        string domain UK
+        boolean is_primary
+    }
+
+    USERS {
+        int id PK
+        string username UK
+        string email UK
+        string password_hash
+        boolean is_active
+        boolean is_superadmin
+    }
+
+    USER_TENANTS {
+        int id PK
+        int user_id FK
+        int tenant_id FK
+        string role
+        string beaver_role_id
+        boolean is_active
+    }

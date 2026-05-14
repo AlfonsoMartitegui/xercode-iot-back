@@ -1,0 +1,19 @@
+﻿flowchart TD
+    Client[Frontend o cliente HTTP] --> API[FastAPI main.py]
+    API --> CORS[CORSMiddleware]
+    API --> Auth[Router auth]
+    API --> Tenants[Router tenants]
+    API --> UserTenants[Router user-tenants]
+    Auth --> Deps[Auth deps y JWT]
+    Tenants --> Deps
+    UserTenants --> Deps
+    Auth --> ORM[Modelos SQLAlchemy]
+    Tenants --> ORM
+    UserTenants --> ORM
+    ORM --> DB[(MySQL)]
+    Tenants --> BeaverClient[BeaverClient]
+    UserTenants --> BeaverClient
+    Auth --> Bridge[Hub bridge RS256]
+    BeaverClient --> Beaver[Beaver API]
+    Bridge -. handoff .-> Beaver
+    Alembic[Alembic migrations] -. gestióna esquema .-> DB

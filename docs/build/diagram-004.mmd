@@ -1,0 +1,10 @@
+﻿flowchart LR
+    Identity[Identidad<br/>User]
+    Tenant[Multi-tenant<br/>Tenant, TenantDomain]
+    Membership[Asignación<br/>UserTenant]
+    Beaver[Integración Beaver<br/>roles, usuarios, handoff]
+
+    Identity --> Membership
+    Tenant --> Membership
+    Membership --> Beaver
+    Tenant --> Beaver

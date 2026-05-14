@@ -1,0 +1,17 @@
+﻿flowchart TB
+    L1[Presentación HTTP<br/>FastAPI, CORS, OpenAPI]
+    L2[Routing<br/>app/routes]
+    L3[Controladores<br/>auth, tenants, user_tenants]
+    L4[Seguridad<br/>JWT, Bearer, permisos tenant]
+    L5[Integración externa<br/>BeaverClient, Hub bridge]
+    L6[Validación<br/>DTOs Pydantic en rutas]
+    L7[Persistencia<br/>SQLAlchemy Session y modelos]
+    L8[(MySQL)]
+
+    L1 --> L2 --> L3
+    L3 --> L4
+    L3 --> L5
+    L3 --> L6
+    L3 --> L7
+    L5 --> L7
+    L7 --> L8
